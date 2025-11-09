@@ -1,0 +1,148 @@
+name: amar_uddokta
+description: A new Flutter project.
+publish_to: 'none' # Remove this line if you wish to publish to pub.dev
+
+version: 1.0.1+6
+
+environment:
+  sdk: ">=3.0.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Core Flutter packages
+  cupertino_icons: ^1.0.8
+  flutter_localizations:
+    sdk: flutter
+
+  # State Management
+  get: ^4.7.2
+  responsive_framework: ^1.0.0 # Added for responsive UI
+
+  # Image, Media & Animation
+  cached_network_image: ^3.3.1
+  carousel_slider: ^5.0.0
+  image_picker: ^1.2.0
+  video_player: ^2.10.0
+  rive: ^0.13.20
+  lottie: ^3.3.2
+  marquee: ^2.3.0
+  photo_view: ^0.15.0
+
+  # Google Maps & Location
+  google_maps_flutter: ^2.5.0
+  geolocator: ^14.0.2
+  geocoding: ^3.0.0
+  location: ^8.0.0
+
+  build_runner: ^2.4.0
+  supabase_flutter: any # Added for Supabase integration
+ 
+  
+  # Utilities
+  share_plus: ^7.0.0
+  universal_html: ^2.2.4
+  curved_navigation_bar: ^1.0.3
+  permission_handler: ^12.0.1
+  url_launcher: ^6.3.2
+  path_provider: ^2.1.5
+  path_provider_android: ^2.2.0 # Added for explicit Android downloads directory access
+  shared_preferences: ^2.5.3
+  flutter_local_notifications: ^19.2.0
+  material_design_icons_flutter: ^7.0.6595
+
+  timer_builder: ^2.0.0
+  webview_flutter: ^4.13.0
+  file_picker: ^10.2.0
+  youtube_player_flutter: 9.1.2
+  chewie: ^1.7.4 # Added for generic video playback UI
+  screenshot: ^3.0.0
+  save: ^0.11.0
+  printing: ^5.14.2
+  google_fonts: ^6.2.1
+  syncfusion_flutter_pdf: ^31.1.23
+  syncfusion_flutter_xlsio: ^31.1.23
+  
+  flutter_lints: ^5.0.0
+  audioplayers: ^6.5.1
+  xml: ^6.5.0
+  flutter_svg: ^1.0.3
+  flutter_downloader: ^1.12.0
+  intl: ^0.20.2
+  comment_box: ^0.0.18
+  http: ^1.2.1
+ 
+  open_filex: ^4.7.0
+  bijoy_helper: ^1.1.0
+  csv: ^5.0.0 # Added for CSV helper
+  video_compress: ^3.1.4 # Added for video compression
+  flutter_image_compress: ^2.2.0 # Added for image compression
+  video_thumbnail: ^0.5.6
+  flutter_screenutil: ^5.9.3
+  qcf_quran: ^0.0.1 # Add this line
+  flutter_staggered_animations: ^1.1.1
+
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_native_splash: ^2.3.5
+  flutter_launcher_icons: ^0.13.1
+  esc_pos_printer_plus: ^0.0.3
+
+flutter_native_splash:
+  image: assets/image/AMAR.mp4
+  branding: assets/image/amarUddokta.png
+  android_gravity: center
+  fullscreen: true
+
+flutter_icons:
+  android: true
+  ios: true
+  image_path: "assets/image/amarUddokta.png"
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/image/
+    - assets/image/default_user.png
+  
+    - assets/sounds/
+    - assets/fonts/SolaimanLipi.ttf
+    - assets/fonts/NotoSansBengali-Regular.ttf
+    - assets/fonts/NotoSansBengali-Bold.ttf
+    - assets\fonts\SutonnyMJ Regular.ttf
+    - assets/fonts/Nikosh.ttf
+    - assets/fonts/arabic/
+    - assets/bn.bengali.xml
+    - assets/svg/
+
+fonts:
+    - family: ArabicFont
+      fonts:
+        - asset: assets/fonts/arabic/AllahMuhammad2022-axnpx.ttf
+    - family: NotoSansBengali
+      fonts:
+        - asset: assets/fonts/NotoSansBengali-Regular.ttf
+        - asset: assets/fonts/NotoSansBengali-Bold.ttf
+    - family: SolaimanLipi
+      fonts:
+        - asset: assets/fonts/SolaimanLipi.ttf
+     
+    - family: Nikosh
+      fonts:
+        - asset: assets/fonts/Nikosh.ttf
+     
+    - family: SutonnyMJ
+      fonts:
+        - asset: assets\fonts\SutonnyMJ Regular.ttf
+
+  
+    - family: KFGQPC Uthman Taha Naskh Bold
+      fonts:
+        - asset: assets/fonts/arabic/KFGQPCUthmanTahaNaskhBold.ttf
+          fonts:
+    - family: QCF_P598
+      fonts:
+        - asset: packages/qcf_quran/assets/fonts/arabic/QCF_P598.ttf

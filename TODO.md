@@ -1,0 +1,10 @@
+- [x] Create TODO list.
+- [x] Read `lib/uddoktaa/screens/home_screen.dart` to identify the incorrect table reference.
+- [x] Update the table name from `public.userCategories` to `public.categories` in `lib/uddoktaa/screens/home_screen.dart`.
+- [x] Correct the column name from `isActive` to `is_active` in `lib/uddoktaa/screens/home_screen.dart`.
+- [x] Investigate the 'special_offers' table not found error.
+- [ ] Find the correct table name for offers.
+- [ ] Update the table name in `home_screen.dart` and `admin_offer_controller.dart`.
+- [ ] Re-evaluate `isActive` vs `is_active` if necessary after table name correction.
+- [ ] Verify the fix.
+- [ ] Attempt completion.
