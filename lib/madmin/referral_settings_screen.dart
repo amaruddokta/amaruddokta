@@ -27,36 +27,32 @@ class _ReferralSettingsScreenState extends State<ReferralSettingsScreen> {
           .select('isEnabled')
           .eq('id', 'status')
           .single();
-      if (settingsSnapshot != null) {
-        if (settingsSnapshot.containsKey("isEnabled")) {
-          setState(() {
-            _isReferralSystemEnabled = settingsSnapshot["isEnabled"];
-          });
-        }
+      if (settingsSnapshot.containsKey("isEnabled")) {
+        setState(() {
+          _isReferralSystemEnabled = settingsSnapshot["isEnabled"];
+        });
       }
-
+    
       final snapshot = await Supabase.instance.client
           .from('referral_settings')
           .select('tiers')
           .eq('id', 'bonus_rules')
           .single();
 
-      if (snapshot != null) {
-        if (snapshot.containsKey('tiers') && snapshot['tiers'] is List) {
-          final tiers = List<Map<String, dynamic>>.from(snapshot['tiers']);
-          setState(() {
-            _bonusTiers.clear();
-            for (var tier in tiers) {
-              _bonusTiers.add({
-                'minAmount': (tier['minAmount'] as num).toDouble(),
-                'maxAmount': (tier['maxAmount'] as num).toDouble(),
-                'bonus': (tier['bonus'] as num).toDouble(),
-              });
-            }
-          });
-        }
+      if (snapshot.containsKey('tiers') && snapshot['tiers'] is List) {
+        final tiers = List<Map<String, dynamic>>.from(snapshot['tiers']);
+        setState(() {
+          _bonusTiers.clear();
+          for (var tier in tiers) {
+            _bonusTiers.add({
+              'minAmount': (tier['minAmount'] as num).toDouble(),
+              'maxAmount': (tier['maxAmount'] as num).toDouble(),
+              'bonus': (tier['bonus'] as num).toDouble(),
+            });
+          }
+        });
       }
-    } catch (e) {
+        } catch (e) {
       // Handle error
     } finally {
       setState(() {
@@ -170,7 +166,7 @@ class _ReferralSettingsScreenState extends State<ReferralSettingsScreen> {
                         ),
                       ),
                     );
-                  }).toList(),
+                  }),
                   const SizedBox(height: 16),
                   ElevatedButton.icon(
                     onPressed: _addTier,

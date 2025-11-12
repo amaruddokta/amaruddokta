@@ -20,12 +20,8 @@ class WhatsappNumberController extends GetxController {
           .limit(1)
           .single();
 
-      if (response != null) {
-        whatsappNumber.value = response['number'] as String;
-      } else {
-        whatsappNumber.value = ''; // No number found
-      }
-    } catch (e) {
+      whatsappNumber.value = response['number'] as String;
+        } catch (e) {
       Get.snackbar('Error', 'Failed to fetch WhatsApp number: $e');
       whatsappNumber.value = ''; // Fallback on error
     }

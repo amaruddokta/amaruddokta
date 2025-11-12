@@ -264,10 +264,6 @@ class AdminOfferControllerr extends GetxController {
           .select('imageUrl')
           .eq('id', offerId)
           .single();
-      if (offerData == null) {
-        Get.snackbar('Error', 'Offer not found!');
-        return;
-      }
       final offer = Offer.fromSupabase(offerData);
 
       // 2. Delete the image from Supabase Storage

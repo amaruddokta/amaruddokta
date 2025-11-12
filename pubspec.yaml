@@ -41,7 +41,8 @@ dependencies:
  
   
   # Utilities
-  share_plus: ^7.0.0
+  path: ^1.9.0
+  share_plus: ^12.0.1
   universal_html: ^2.2.4
   curved_navigation_bar: ^1.0.3
   permission_handler: ^12.0.1
@@ -53,7 +54,7 @@ dependencies:
   material_design_icons_flutter: ^7.0.6595
 
   timer_builder: ^2.0.0
-  webview_flutter: ^4.13.0
+  
   file_picker: ^10.2.0
   youtube_player_flutter: 9.1.2
   chewie: ^1.7.4 # Added for generic video playback UI
@@ -82,6 +83,7 @@ dependencies:
   flutter_screenutil: ^5.9.3
   qcf_quran: ^0.0.1 # Add this line
   flutter_staggered_animations: ^1.1.1
+  google_sign_in: ^6.2.1
 
 
 dev_dependencies:

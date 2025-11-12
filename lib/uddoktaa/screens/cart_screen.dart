@@ -9,56 +9,11 @@ import 'package:amar_uddokta/uddoktaa/screens/registration_screen.dart'
 import 'package:amar_uddokta/uddoktaa/widgets/background_container.dart';
 import 'package:amar_uddokta/uddoktaa/services/location_service.dart'; // ✅ লোকেশন সার্ভিস ইম্পোর্ট
 import 'package:amar_uddokta/uddoktaa/data/location_data.dart';
-import 'package:webview_flutter/webview_flutter.dart';
 
 class CartScreen extends StatefulWidget {
   const CartScreen({super.key});
   @override
   State<CartScreen> createState() => _CartScreenState();
-}
-
-class PaymentWebViewScreen extends StatefulWidget {
-  final String paymentUrl;
-  final String orderId;
-  const PaymentWebViewScreen({
-    super.key,
-    required this.paymentUrl,
-    required this.orderId,
-  });
-  @override
-  State<PaymentWebViewScreen> createState() => _PaymentWebViewScreenState();
-}
-
-class _PaymentWebViewScreenState extends State<PaymentWebViewScreen> {
-  late final WebViewController _controller;
-  @override
-  void initState() {
-    super.initState();
-    _controller = WebViewController()
-      ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setNavigationDelegate(
-        NavigationDelegate(
-          onPageFinished: (url) async {
-            if (url.contains('status=success')) {
-              await Supabase.instance.client.from('orders').update(
-                  {'paymentStatus': 'success'}).eq('id', widget.orderId);
-              Navigator.of(context).pop(true);
-            } else if (url.contains('status=failed')) {
-              Navigator.of(context).pop(false);
-            }
-          },
-        ),
-      )
-      ..loadRequest(Uri.parse(widget.paymentUrl));
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('পেমেন্ট')),
-      body: WebViewWidget(controller: _controller),
-    );
-  }
 }
 
 class _CartScreenState extends State<CartScreen> {
@@ -205,15 +160,13 @@ class _CartScreenState extends State<CartScreen> {
           .eq('id', user.id)
           .single();
       final data = response;
-      if (data != null) {
-        final dynamic balance = data['referBalance'];
-        if (balance is String) {
-          _userReferBalance.value = double.tryParse(balance) ?? 0.0;
-        } else if (balance is num) {
-          _userReferBalance.value = balance.toDouble();
-        } else {
-          _userReferBalance.value = 0.0;
-        }
+      final dynamic balance = data['referBalance'];
+      if (balance is String) {
+        _userReferBalance.value = double.tryParse(balance) ?? 0.0;
+      } else if (balance is num) {
+        _userReferBalance.value = balance.toDouble();
+      } else {
+        _userReferBalance.value = 0.0;
       }
     }
   }
@@ -278,17 +231,15 @@ class _CartScreenState extends State<CartScreen> {
         .eq('id', 'bonus_rules')
         .single();
 
-    if (settingsResponse != null) {
-      final settingsData = settingsResponse;
-      if (settingsData != null && settingsData['tiers'] is List) {
-        final tiers = List<Map<String, dynamic>>.from(settingsData['tiers']);
-        for (var tier in tiers) {
-          final minAmount = (tier['minAmount'] as num).toDouble();
-          final maxAmount = (tier['maxAmount'] as num).toDouble();
-          if (total >= minAmount && total < maxAmount) {
-            bonus = (tier['bonus'] as num).toDouble();
-            break;
-          }
+    final settingsData = settingsResponse;
+    if (settingsData['tiers'] is List) {
+      final tiers = List<Map<String, dynamic>>.from(settingsData['tiers']);
+      for (var tier in tiers) {
+        final minAmount = (tier['minAmount'] as num).toDouble();
+        final maxAmount = (tier['maxAmount'] as num).toDouble();
+        if (total >= minAmount && total < maxAmount) {
+          bonus = (tier['bonus'] as num).toDouble();
+          break;
         }
       }
     }
@@ -344,7 +295,7 @@ class _CartScreenState extends State<CartScreen> {
     try {
       if (upazila != null && upazila.isNotEmpty) {
         final response = await Supabase.instance.client
-            .from('adminDeliveryFee')
+            .from('delivery_fees')
             .select()
             .eq('admin_Division', division)
             .eq('admin_District', district)
@@ -356,7 +307,7 @@ class _CartScreenState extends State<CartScreen> {
       }
 
       final response = await Supabase.instance.client
-          .from('adminDeliveryFee')
+          .from('delivery_fees')
           .select()
           .eq('admin_Division', division)
           .eq('admin_District', district)
@@ -367,7 +318,7 @@ class _CartScreenState extends State<CartScreen> {
       }
 
       final response2 = await Supabase.instance.client
-          .from('adminDeliveryFee')
+          .from('delivery_fees')
           .select()
           .eq('admin_Division', division)
           .filter('admin_District', 'is', null)
@@ -423,20 +374,18 @@ class _CartScreenState extends State<CartScreen> {
           .eq('id', user.id)
           .single();
       final data = response;
-      if (data != null) {
-        final dynamic balance = data['referBalance'];
-        double currentBalance = 0.0;
-        if (balance is String) {
-          currentBalance = double.tryParse(balance) ?? 0.0;
-        } else if (balance is num) {
-          currentBalance = balance.toDouble();
-        }
-        final newBalance = currentBalance - usedAmount;
-
-        await Supabase.instance.client.from('users').update({
-          'referBalance': newBalance > 0 ? newBalance : 0,
-        }).eq('id', user.id);
+      final dynamic balance = data['referBalance'];
+      double currentBalance = 0.0;
+      if (balance is String) {
+        currentBalance = double.tryParse(balance) ?? 0.0;
+      } else if (balance is num) {
+        currentBalance = balance.toDouble();
       }
+      final newBalance = currentBalance - usedAmount;
+
+      await Supabase.instance.client.from('users').update({
+        'referBalance': newBalance > 0 ? newBalance : 0,
+      }).eq('id', user.id);
     }
   }
 
@@ -591,20 +540,11 @@ class _CartScreenState extends State<CartScreen> {
     String paymentUrl = selectedPaymentMethod == 'Bkash'
         ? 'https://valid-oven-461003-h0.web.app/bkash-checkout.html?amount=$amount&orderId=$orderId'
         : 'https://valid-oven-461003-h0.web.app/nagad-checkout.html?amount=$amount&orderId=$orderId';
-    final result = await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => PaymentWebViewScreen(
-          paymentUrl: paymentUrl,
-          orderId: orderId,
-        ),
-      ),
-    );
-    if (result == true) {
-      await _placeOrder(orderId: orderId, paymentStatus: 'success');
-    } else {
-      Get.snackbar('পেমেন্ট ব্যর্থ', 'পেমেন্ট সফল হয়নি। আবার চেষ্টা করুন।');
-    }
+    // After removing PaymentWebViewScreen, we need to decide how to handle online payments.
+    // For now, we'll assume online payments are not supported directly from here.
+    // The user will need to implement an alternative payment flow or remove online payment options.
+    Get.snackbar('পেমেন্ট পদ্ধতি অনুপলব্ধ',
+        'অনলাইন পেমেন্ট পদ্ধতি বর্তমানে উপলব্ধ নয়।');
   }
 
   // নতুন মেথড যোগ করা হল

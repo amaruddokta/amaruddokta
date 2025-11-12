@@ -24,7 +24,7 @@ class AdminDeliveryFeeController extends GetxController {
     try {
       // Fetch data from Supabase
       final response = await supabase
-          .from('adminDeliveryFee')
+          .from('delivery_fees')
           .select('*'); // Select all columns
 
       // Supabase returns a List<Map<String, dynamic>> directly
@@ -52,7 +52,7 @@ class AdminDeliveryFeeController extends GetxController {
   }) async {
     try {
       // Add data to Supabase
-      await supabase.from('adminDeliveryFee').insert({
+      await supabase.from('delivery_fees').insert({
         'admin_Division': admin_Division,
         'admin_District': admin_District,
         'admin_Upazila': admin_Upazila,
@@ -74,7 +74,7 @@ class AdminDeliveryFeeController extends GetxController {
   }) async {
     try {
       // Update data in Supabase
-      await supabase.from('adminDeliveryFee').update({
+      await supabase.from('delivery_fees').update({
         'admin_Division': admin_Division,
         'admin_District': admin_District,
         'admin_Upazila': admin_Upazila,
@@ -91,7 +91,7 @@ class AdminDeliveryFeeController extends GetxController {
     try {
       // Delete data from Supabase
       await supabase
-          .from('adminDeliveryFee')
+          .from('delivery_fees')
           .delete()
           .eq('id', id); // Filter by the primary key 'id'
       fetchDeliveryFees(); // Refresh the list

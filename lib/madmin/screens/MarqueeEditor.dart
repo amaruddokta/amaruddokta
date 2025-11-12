@@ -28,7 +28,7 @@ class _MarqueeEditorState extends State<MarqueeEditor> {
 
       if (!mounted) return;
 
-      if (response != null && response['admin_text'] != null) {
+      if (response['admin_text'] != null) {
         _controller.text = response['admin_text'];
       } else {
         // যদি ডাটা না থাকে, নতুন তৈরি করুন

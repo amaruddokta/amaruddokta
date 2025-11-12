@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:flutter/material.dart';
-import 'package:get/get.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'dart:io';
 
@@ -9,6 +7,7 @@ class AboutController extends GetxController {
   final SupabaseClient _supabase = Supabase.instance.client;
 
   RxList<Map<String, dynamic>> aboutList = <Map<String, dynamic>>[].obs;
+  RxBool isLoading = false.obs;
 
   @override
   void onInit() {
@@ -18,11 +17,12 @@ class AboutController extends GetxController {
 
   Future<void> fetchAboutList() async {
     try {
+      isLoading.value = true;
       final response = await _supabase
           .from('manAbout')
           .select()
-          .order('order', ascending: true);
-      aboutList.value = response;
+          .order('position_order', ascending: true);
+      aboutList.value = List<Map<String, dynamic>>.from(response);
     } catch (e) {
       Get.snackbar(
         'Error',
@@ -31,6 +31,8 @@ class AboutController extends GetxController {
         backgroundColor: Colors.red,
         colorText: Colors.white,
       );
+    } finally {
+      isLoading.value = false;
     }
   }
 
@@ -77,6 +79,7 @@ class AboutController extends GetxController {
     String? manImageUrl,
   }) async {
     try {
+      isLoading.value = true;
       // Get the current count to set the order (new item at the end)
       final count = aboutList.length;
       await _supabase.from('manAbout').insert({
@@ -85,9 +88,9 @@ class AboutController extends GetxController {
         'manRole': manRole,
         'manDescription': manDescription,
         'manImageUrl': manImageUrl,
-        'order': count, // Set the order
+        'position_order': count,
       });
-      fetchAboutList();
+      await fetchAboutList();
       Get.snackbar(
         'Success',
         'New About entry added successfully!',
@@ -103,6 +106,8 @@ class AboutController extends GetxController {
         backgroundColor: Colors.red,
         colorText: Colors.white,
       );
+    } finally {
+      isLoading.value = false;
     }
   }
 
@@ -116,6 +121,7 @@ class AboutController extends GetxController {
     bool shouldDeleteImage = false,
   }) async {
     try {
+      isLoading.value = true;
       Map<String, dynamic> updateData = {};
       if (manTitle != null) updateData['manTitle'] = manTitle;
       if (manSubtitle != null) updateData['manSubtitle'] = manSubtitle;
@@ -137,7 +143,7 @@ class AboutController extends GetxController {
       }
 
       await _supabase.from('manAbout').update(updateData).eq('id', id);
-      fetchAboutList();
+      await fetchAboutList();
       Get.snackbar(
         'Success',
         'About data updated successfully!',
@@ -153,11 +159,14 @@ class AboutController extends GetxController {
         backgroundColor: Colors.red,
         colorText: Colors.white,
       );
+    } finally {
+      isLoading.value = false;
     }
   }
 
   Future<void> deleteAboutData(String id, String? imageUrl) async {
     try {
+      isLoading.value = true;
       if (imageUrl?.isNotEmpty == true) {
         await deleteImage(imageUrl!);
       }
@@ -183,6 +192,8 @@ class AboutController extends GetxController {
         backgroundColor: Colors.red,
         colorText: Colors.white,
       );
+    } finally {
+      isLoading.value = false;
     }
   }
 
@@ -192,9 +203,9 @@ class AboutController extends GetxController {
       for (int i = 0; i < items.length; i++) {
         await _supabase
             .from('manAbout')
-            .update({'order': i}).eq('id', items[i]['id']);
+            .update({'position_order': i}).eq('id', items[i]['id']);
       }
-      fetchAboutList(); // Refresh the list
+      await fetchAboutList(); // Refresh the list
     } catch (e) {
       Get.snackbar(
         'Error',
@@ -220,9 +231,9 @@ class AboutController extends GetxController {
       for (int i = 0; i < aboutList.length; i++) {
         await _supabase
             .from('manAbout')
-            .update({'order': i}).eq('id', aboutList[i]['id']);
+            .update({'position_order': i}).eq('id', aboutList[i]['id']);
       }
-      fetchAboutList(); // Refresh the list
+      await fetchAboutList(); // Refresh the list
     } catch (e) {
       Get.snackbar(
         'Error',

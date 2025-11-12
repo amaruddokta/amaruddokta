@@ -1,12 +1,11 @@
 // ignore_for_file: unused_import
 
-import 'package:amar_uddokta/Quran/quran_home_page.dart';
+import 'package:amar_uddokta/Quran/my_app.dart' as quran_app;
 import 'package:amar_uddokta/uddoktaa/controllers/cart_controller.dart';
 import 'package:amar_uddokta/uddoktaa/controllers/package_controller.dart';
 import 'package:amar_uddokta/uddoktaa/controllers/ProductController.dart';
 import 'package:amar_uddokta/uddoktaa/controllers/favorite_controller.dart';
 
-import 'package:amar_uddokta/uddoktaa/screens/ChatScreen.dart';
 import 'package:amar_uddokta/uddoktaa/services/user_prefs.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -75,9 +74,14 @@ class MyApp extends StatelessWidget {
           ), // মূল অ্যাপের হোম স্ক্রিন
           GetPage(
             name: '/Quran',
-            page: () => Builder(builder: (context) => QuranHomePage()),
+            page: () => quran_app.MyApp(),
           ), // কুরআন অ্যাপের হোম স্ক্রিন
-          GetPage(name: '/profile', page: () => app_profile.ProfileScreen()),
+          GetPage(
+            name: '/profile',
+            page: () => app_profile.ProfileScreen(
+              registrationData: Get.arguments,
+            ),
+          ),
           GetPage(name: '/cart', page: () => CartScreen()),
           GetPage(name: '/favorite', page: () => FavoriteScreen()),
           GetPage(

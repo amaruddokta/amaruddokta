@@ -21,7 +21,7 @@ class SalesDetailScreen extends StatelessWidget {
             .stream(primaryKey: ['orderId'])
             .gte('placedAt', startOfDay) // Use placedAt for filtering
             .execute()
-            .map((data) => data as List<Map<String, dynamic>>),
+            .map((data) => data),
         builder: (context, snapshot) {
           if (!snapshot.hasData) {
             return const Center(child: CircularProgressIndicator());

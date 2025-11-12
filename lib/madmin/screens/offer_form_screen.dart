@@ -1272,7 +1272,7 @@ class _OfferFormContentState extends State<OfferFormContent> {
             const SizedBox(height: 24),
 
             // Save Button
-            Container(
+            SizedBox(
               width: double.infinity,
               height: 56,
               child: ElevatedButton(

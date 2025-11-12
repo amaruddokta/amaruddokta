@@ -17,12 +17,8 @@ class LabelService {
           .eq('id', 'bn')
           .single();
 
-      if (response != null) {
-        _labels = response['labels'];
-      } else {
-        _labels = _getDefaultLabels();
-      }
-    } catch (e) {
+      _labels = response['labels'];
+        } catch (e) {
       print('Error loading labels: $e');
       _labels = _getDefaultLabels();
     }

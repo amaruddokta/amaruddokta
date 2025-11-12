@@ -16,7 +16,7 @@ class NotificationScreen extends StatelessWidget {
             .stream(primaryKey: ['id'])
             .order('createdAt', ascending: false)
             .execute()
-            .map((data) => data as List<Map<String, dynamic>>),
+            .map((data) => data),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());

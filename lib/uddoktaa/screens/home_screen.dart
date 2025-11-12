@@ -6,7 +6,7 @@ import 'package:amar_uddokta/uddoktaa/widgets/background_container.dart';
 import 'package:amar_uddokta/uddoktaa/screens/sub_item_screen.dart';
 import 'package:amar_uddokta/uddoktaa/screens/cart_screen.dart';
 import 'package:amar_uddokta/uddoktaa/widgets/banner_slider.dart';
-import 'package:amar_uddokta/uddoktaa/widgets/logo_widget.dart'; // Corrected import path
+// Corrected import path
 import 'package:amar_uddokta/uddoktaa/widgets/custom_drawer.dart';
 import 'package:amar_uddokta/uddoktaa/widgets/video_list_section.dart';
 import 'package:amar_uddokta/uddoktaa/widgets/bottom_icon.dart';
@@ -132,16 +132,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       final response = await Supabase.instance.client
           .from('adminNumbers')
           .select('cnumbers')
-          .order('timestamp', ascending: false)
+          .order('created_at', ascending: false)
           .limit(1)
           .single();
-      if (response != null) {
-        final phoneNumber = response['cnumbers'] as String?;
-        if (phoneNumber != null && phoneNumber.isNotEmpty) {
-          makePhoneCall(context, phoneNumber);
-        } else {
-          Get.snackbar('Error', 'Phone number not available.');
-        }
+      final phoneNumber = response['cnumbers'] as String?;
+      if (phoneNumber != null && phoneNumber.isNotEmpty) {
+        makePhoneCall(context, phoneNumber);
+      } else {
+        Get.snackbar('Error', 'Phone number not available.');
       }
     } catch (e) {
       Get.snackbar('Error', 'Failed to fetch call number: $e');
@@ -578,23 +576,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         }),
                       ),
                       const SizedBox(height: 0),
-                      // Logo Widget with enhanced design
-                      Container(
-                        margin: const EdgeInsets.symmetric(horizontal: 16),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(15),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.05),
-                              blurRadius: 5,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: LogoWidget(),
-                      ),
-                      const SizedBox(height: 0),
+
                       // Offer Widgets with enhanced design
                       Container(
                         margin: const EdgeInsets.symmetric(horizontal: 16),

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:intl/intl.dart';
+import 'package:amar_uddokta/uddoktaa/widgets/background_container.dart'; // Your custom widget
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
@@ -9,174 +11,241 @@ class ChatScreen extends StatefulWidget {
 }
 
 class _ChatScreenState extends State<ChatScreen> {
-  final TextEditingController _messageController = TextEditingController();
+  final TextEditingController _controller = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
   final SupabaseClient _supabase = Supabase.instance.client;
-  User? _user;
+  
+  // IMPORTANT: Replace with the actual logged-in user's ID
+  late final String _userId; 
+  late final Stream<List<Map<String, dynamic>>> _messagesStream;
+  bool _isAdminOnline = false;
 
   @override
   void initState() {
     super.initState();
-    _user = _supabase.auth.currentUser;
+    // In a real app, get the user ID from authentication
+    // For example: _userId = Supabase.instance.client.auth.currentUser!.id;
+    _userId = 'user_${DateTime.now().millisecondsSinceEpoch}'; // Placeholder
+    _initializeChat();
+    _checkAdminStatus();
+  }
+
+  void _initializeChat() async {
+    // Check if a chat session exists for this user, if not, create one.
+    final existingChat = await _supabase
+        .from('chats')
+        .select()
+        .eq('id', _userId)
+        .maybeSingle();
+
+    if (existingChat == null) {
+      await _supabase.from('chats').insert({
+        'id': _userId,
+        'userName': 'Customer Name', // Replace with actual user name
+        'last_message': 'Chat started',
+        'last_message_time': DateTime.now().toIso8601String(),
+        'is_unread_for_admin': false,
+      });
+    }
+    
+    // Set up the stream for messages
+    setState(() {
+      _messagesStream = _supabase
+          .from('messages')
+          .stream(primaryKey: ['id'])
+          .eq('chat_id', _userId)
+          .order('timestamp', ascending: false);
+    });
+  }
+
+  void _checkAdminStatus() {
+    // This is a placeholder. You need a way to track admin online status.
+    // For simplicity, we'll assume admin is always online.
+    // You can create a separate 'admin_status' table for real-time updates.
+    setState(() {
+      _isAdminOnline = true;
+    });
   }
 
   void _sendMessage() async {
-    if (_messageController.text.isNotEmpty && _user != null) {
-      // Also save the user's name to the chat document for the admin panel
-      await _supabase.from('chats').upsert({
-        'id': _user!.id,
-        'userName': _user!.userMetadata?['name'] ?? 'No Name',
-      });
+    if (_controller.text.trim().isEmpty) return;
+    final text = _controller.text.trim();
+    _controller.clear();
 
-      await _supabase.from('messages').insert({
-        'chat_id': _user!.id,
-        'text': _messageController.text,
-        'senderId': _user!.id,
-      });
-      _messageController.clear();
-    }
+    // Insert message
+    await _supabase.from('messages').insert({
+      'chat_id': _userId,
+      'text': text,
+      'senderId': 'user',
+      'timestamp': DateTime.now().toIso8601String(),
+    });
+
+    // Update chat list for admin
+    await _supabase.from('chats').update({
+      'last_message': text,
+      'last_message_time': DateTime.now().toIso8601String(),
+      'is_unread_for_admin': true, // Mark as unread for admin
+    }).eq('id', _userId);
+
+    _scrollToBottom();
   }
 
-  void _editMessage(Map<String, dynamic> message) {
-    final TextEditingController editController =
-        TextEditingController(text: message['text']);
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Edit Message'),
-        content: TextField(
-          controller: editController,
-          autofocus: true,
-        ),
-        actions: [
-          TextButton(
-            child: const Text('Cancel'),
-            onPressed: () => Navigator.pop(context),
+  void _scrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          _scrollController.position.minScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return BackgroundContainer(
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          title: Row(
+            children: [
+              CircleAvatar(
+                backgroundColor: Colors.white,
+                child: Icon(Icons.support_agent, color: Theme.of(context).primaryColor),
+              ),
+              const SizedBox(width: 12),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Support', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                  Text(
+                    _isAdminOnline ? 'Online' : 'Offline',
+                    style: TextStyle(color: Colors.white70, fontSize: 12),
+                  ),
+                ],
+              ),
+            ],
           ),
-          TextButton(
-            child: const Text('Save'),
-            onPressed: () async {
-              if (editController.text.isNotEmpty) {
-                await _supabase.from('messages').update(
-                    {'text': editController.text}).eq('id', message['id']);
-                Navigator.pop(context);
-              }
-            },
+        ),
+        body: Column(
+          children: [
+            Expanded(
+              child: StreamBuilder<List<Map<String, dynamic>>>(
+                stream: _messagesStream,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                    return const Center(child: Text("No messages yet. Start a conversation!"));
+                  }
+
+                  final messages = snapshot.data!;
+                  _scrollToBottom();
+
+                  return ListView.builder(
+                    reverse: true,
+                    controller: _scrollController,
+                    padding: const EdgeInsets.all(8.0),
+                    itemCount: messages.length,
+                    itemBuilder: (context, index) {
+                      final message = messages[index];
+                      final isMe = message['senderId'] == 'user';
+                      return _buildMessageBubble(message['text'], isMe, message['timestamp']);
+                    },
+                  );
+                },
+              ),
+            ),
+            _buildMessageComposer(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMessageBubble(String text, bool isMe, dynamic timestamp) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4.0),
+      child: Row(
+        mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
+        children: [
+          Flexible(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              decoration: BoxDecoration(
+                color: isMe ? Colors.deepPurple[100] : Colors.white,
+                borderRadius: BorderRadius.only(
+                  topLeft: const Radius.circular(18),
+                  topRight: const Radius.circular(18),
+                  bottomLeft: isMe ? const Radius.circular(18) : const Radius.circular(0),
+                  bottomRight: isMe ? const Radius.circular(0) : const Radius.circular(18),
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    text,
+                    style: TextStyle(color: isMe ? Colors.black : Colors.black),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    _formatMessageTime(timestamp),
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: Colors.black54,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
         ],
       ),
     );
   }
 
-  void _deleteMessage(Map<String, dynamic> message) {
-    _supabase.from('messages').delete().eq('id', message['id']);
+  Widget _buildMessageComposer() {
+    return Container(
+      padding: const EdgeInsets.all(8.0),
+      color: Colors.white,
+      child: Row(
+        children: [
+          Expanded(
+            child: TextField(
+              controller: _controller,
+              decoration: InputDecoration(
+                hintText: 'Type a message...',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(30),
+                  borderSide: BorderSide.none,
+                ),
+                filled: true,
+                fillColor: Colors.grey[200],
+                contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          CircleAvatar(
+            backgroundColor: Theme.of(context).primaryColor,
+            child: IconButton(
+              icon: const Icon(Icons.send, color: Colors.white),
+              onPressed: _sendMessage,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Chat'),
-      ),
-      body: _user == null
-          ? const Center(
-              child: Text('Please log in to use the chat.'),
-            )
-          : Column(
-              children: [
-                Expanded(
-                  child: StreamBuilder<List<Map<String, dynamic>>>(
-                    stream: _supabase
-                        .from('messages')
-                        .stream(primaryKey: ['id'])
-                        .eq('chat_id', _user!.id)
-                        .order('created_at', ascending: false),
-                    builder: (context, snapshot) {
-                      if (!snapshot.hasData) {
-                        return const Center(
-                          child: CircularProgressIndicator(),
-                        );
-                      }
-                      final messages = snapshot.data!;
-                      return ListView.builder(
-                        reverse: true,
-                        itemCount: messages.length,
-                        itemBuilder: (context, index) {
-                          final message = messages[index];
-                          final isMe = message['senderId'] == _user!.id;
-                          return GestureDetector(
-                            onLongPress: () {
-                              if (isMe) {
-                                showDialog(
-                                  context: context,
-                                  builder: (context) => AlertDialog(
-                                    actions: [
-                                      TextButton(
-                                        child: const Text('Edit'),
-                                        onPressed: () {
-                                          Navigator.pop(context);
-                                          _editMessage(message);
-                                        },
-                                      ),
-                                      TextButton(
-                                        child: const Text('Delete'),
-                                        onPressed: () {
-                                          Navigator.pop(context);
-                                          _deleteMessage(message);
-                                        },
-                                      ),
-                                    ],
-                                  ),
-                                );
-                              }
-                            },
-                            child: ListTile(
-                              title: Align(
-                                alignment: isMe
-                                    ? Alignment.centerRight
-                                    : Alignment.centerLeft,
-                                child: Container(
-                                  padding: const EdgeInsets.all(10),
-                                  decoration: BoxDecoration(
-                                    color:
-                                        isMe ? Colors.blue : Colors.grey[300],
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  child: Text(
-                                    message['text'],
-                                    style: TextStyle(
-                                      color: isMe ? Colors.white : Colors.black,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          );
-                        },
-                      );
-                    },
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _messageController,
-                          decoration: const InputDecoration(
-                            hintText: 'Enter your message...',
-                          ),
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.send),
-                        onPressed: _sendMessage,
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-    );
+  String _formatMessageTime(dynamic timestamp) {
+    if (timestamp == null) return '';
+    final dateTime = DateTime.parse(timestamp);
+    return DateFormat('h:mm a').format(dateTime);
   }
 }

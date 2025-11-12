@@ -1,11 +1,10 @@
 // ignore_for_file: prefer_const_constructors, prefer_const_literals_to_create_immutables
-import 'dart:io';
 import 'package:amar_uddokta/madmin/screens/admin_dashboard_screen.dart';
 
 import 'package:amar_uddokta/uddoktaa/screens/TermsApp.dart';
 import 'package:amar_uddokta/uddoktaa/screens/about_screen.dart';
 
-import 'package:shared_preferences/shared_preferences.dart'; // Import shared_preferences
+// Import shared_preferences
 // Import Login screen
 
 import 'package:flutter/material.dart';

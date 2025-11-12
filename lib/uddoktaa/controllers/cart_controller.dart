@@ -87,18 +87,16 @@ class CartController extends GetxController {
           .single();
       final data = response;
 
-      if (data != null) {
-        final currentBalance =
-            (data['referBalance'] as num?)?.toDouble() ?? 0.0;
-        final newBalance = currentBalance + bonus;
+      final currentBalance =
+          (data['referBalance'] as num?)?.toDouble() ?? 0.0;
+      final newBalance = currentBalance + bonus;
 
-        await _supabase.from('users').update({
-          'referBalance': newBalance,
-        }).eq('id', refererId);
+      await _supabase.from('users').update({
+        'referBalance': newBalance,
+      }).eq('id', refererId);
 
-        return true;
-      }
-      return false;
+      return true;
+          return false;
     } catch (e) {
       print('Error updating referer balance: $e');
       return false;

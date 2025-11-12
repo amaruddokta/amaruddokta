@@ -38,7 +38,7 @@ class _CommentAdminPanelState extends State<CommentAdminPanel> {
     final orderedQuery = query.order("timestamp", ascending: false);
 
     _commentsStream = orderedQuery.asStream().map(
-          (event) => event.map((e) => e as Map<String, dynamic>).toList(),
+          (event) => event.map((e) => e).toList(),
         );
   }
 
@@ -59,7 +59,7 @@ class _CommentAdminPanelState extends State<CommentAdminPanel> {
       final orderedQuery = query.order("timestamp", ascending: false);
 
       _commentsStream = orderedQuery.asStream().map(
-            (event) => event.map((e) => e as Map<String, dynamic>).toList(),
+            (event) => event.map((e) => e).toList(),
           );
     });
   }

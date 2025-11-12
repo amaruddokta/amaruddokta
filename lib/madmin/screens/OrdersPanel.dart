@@ -81,7 +81,7 @@ class _OrdersPanelState extends State<OrdersPanel> {
     }
 
     final response = await transformedQuery;
-    if (response != null && response.isNotEmpty) {
+    if (response.isNotEmpty) {
       _orders.addAll((response as List).cast<Map<String, dynamic>>());
       _lastDocument = _orders.last;
     } else {
@@ -102,19 +102,17 @@ class _OrdersPanelState extends State<OrdersPanel> {
         .eq('orderId', order['orderId'])
         .single();
 
-    if (response != null) {
-      final index = _orders.indexOf(order);
-      if (index != -1) {
-        List<Map<String, dynamic>> newOrders =
-            List<Map<String, dynamic>>.from(_orders);
-        newOrders[index] = response;
+    final index = _orders.indexOf(order);
+    if (index != -1) {
+      List<Map<String, dynamic>> newOrders =
+          List<Map<String, dynamic>>.from(_orders);
+      newOrders[index] = response;
 
-        setState(() {
-          _orders = newOrders;
-        });
-      }
+      setState(() {
+        _orders = newOrders;
+      });
     }
-    _fetchSummary();
+      _fetchSummary();
   }
 
   Widget _buildFilterControls() {

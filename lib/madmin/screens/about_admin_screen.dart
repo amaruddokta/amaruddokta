@@ -2,7 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:amar_uddokta/uddoktaa/controllers/AboutController.dart';
+import 'package:amar_uddokta/madmin/Controller/AboutController.dart';
 
 class AboutAdminScreen extends StatefulWidget {
   const AboutAdminScreen({super.key});
@@ -318,6 +318,12 @@ class _AboutAdminScreenState extends State<AboutAdminScreen> {
         ],
       ),
       body: Obx(() {
+        if (aboutController.isLoading.value) {
+          return const Center(
+            child: CircularProgressIndicator(color: Colors.deepPurple),
+          );
+        }
+
         if (aboutController.aboutList.isEmpty) {
           return const Center(
             child: Text('No About entries found. Click + to add one.'),
@@ -448,7 +454,15 @@ class _AboutAdminScreenState extends State<AboutAdminScreen> {
                                                     true &&
                                                 !_deleteImage)
                                             ? Image.network(_currentImageUrl!,
-                                                fit: BoxFit.cover)
+                                                fit: BoxFit.cover, errorBuilder:
+                                                    (context, error,
+                                                        stackTrace) {
+                                                return const Icon(
+                                                  Icons.person,
+                                                  size: 70,
+                                                  color: Colors.grey,
+                                                );
+                                              })
                                             : Column(
                                                 mainAxisAlignment:
                                                     MainAxisAlignment.center,

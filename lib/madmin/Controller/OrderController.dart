@@ -40,7 +40,7 @@ class OrderController extends GetxController {
 
       // Assuming OrderModel has a fromMap constructor
       allOrders.value =
-          (response as List<Map<String, dynamic>>) // Explicitly cast
+          (response) // Explicitly cast
               .map((doc) => OrderModel.fromMap(doc))
               .toList();
       applyFilters();

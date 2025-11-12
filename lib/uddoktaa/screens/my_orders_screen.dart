@@ -350,13 +350,11 @@ class MyOrdersScreen extends StatelessWidget {
             .select('referBalance')
             .eq('id', refererId)
             .single();
-        if (refererData != null) {
-          final currentRefererBalance =
-              (refererData['referBalance'] as num?)?.toDouble() ?? 0.0;
-          await Supabase.instance.client.from('users').update({
-            'referBalance': currentRefererBalance - bonusGivenToReferrer,
-          }).eq('id', refererId);
-        }
+        final currentRefererBalance =
+            (refererData['referBalance'] as num?)?.toDouble() ?? 0.0;
+        await Supabase.instance.client.from('users').update({
+          'referBalance': currentRefererBalance - bonusGivenToReferrer,
+        }).eq('id', refererId);
       }
 
       // 2. Refund used referral balance to current user if applicable
@@ -368,13 +366,11 @@ class MyOrdersScreen extends StatelessWidget {
               .select('referBalance')
               .eq('id', currentUser.id)
               .single();
-          if (userData != null) {
-            final currentUserBalance =
-                (userData['referBalance'] as num?)?.toDouble() ?? 0.0;
-            await Supabase.instance.client.from('users').update({
-              'referBalance': currentUserBalance + referBalanceUsed,
-            }).eq('id', currentUser.id);
-          }
+          final currentUserBalance =
+              (userData['referBalance'] as num?)?.toDouble() ?? 0.0;
+          await Supabase.instance.client.from('users').update({
+            'referBalance': currentUserBalance + referBalanceUsed,
+          }).eq('id', currentUser.id);
         }
       }
 
@@ -404,9 +400,6 @@ class MyOrdersScreen extends StatelessWidget {
 // Helper method to build the transaction and payment details
 Widget _buildTransactionDetails(Map<String, dynamic> order) {
   final orderData = order;
-  if (orderData == null) {
-    return SizedBox.shrink(); // Return an empty widget if orderData is null
-  }
 
   return Column(
     crossAxisAlignment: CrossAxisAlignment.start,

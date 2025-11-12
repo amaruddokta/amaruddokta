@@ -1,10 +1,9 @@
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 class SubItem {
   final String id;
   final String name;
   final String description;
-  final String imageUrl; // Added imageUrl field
+  final String imageUrl;
   final bool isActive;
   final int order;
   final String? createdAt;
@@ -14,7 +13,7 @@ class SubItem {
     required this.id,
     required this.name,
     this.description = '',
-    this.imageUrl = '', // Initialize imageUrl
+    this.imageUrl = '',
     this.isActive = true,
     this.order = 0,
     this.createdAt,
@@ -24,9 +23,9 @@ class SubItem {
   factory SubItem.fromMap(Map<String, dynamic> data) {
     return SubItem(
       id: data['id'] ?? '',
-      name: data['name'] ?? '',
-      description: data['description'] ?? '',
-      imageUrl: data['imageUrl'] ?? '', // Retrieve imageUrl from Supabase
+      name: data['name'] ?? data['usernames'] ?? '',
+      description: data['description'] ?? data['userdetailss'] ?? '',
+      imageUrl: data['imageUrl'] ?? data['userimageUrls'] ?? '',
       isActive: data['isActive'] ?? true,
       order: data['order'] ?? 0,
       createdAt: data['createdAt'] as String?,
@@ -38,7 +37,7 @@ class SubItem {
     return {
       'name': name,
       'description': description,
-      'imageUrl': imageUrl, // Add imageUrl to Supabase map
+      'imageUrl': imageUrl,
       'isActive': isActive,
       'order': order,
       'createdAt': createdAt ?? DateTime.now().toIso8601String(),
@@ -50,7 +49,7 @@ class SubItem {
     String? id,
     String? name,
     String? description,
-    String? imageUrl, // Added imageUrl to copyWith
+    String? imageUrl,
     bool? isActive,
     int? order,
     String? createdAt,
@@ -60,7 +59,7 @@ class SubItem {
       id: id ?? this.id,
       name: name ?? this.name,
       description: description ?? this.description,
-      imageUrl: imageUrl ?? this.imageUrl, // Update imageUrl in copyWith
+      imageUrl: imageUrl ?? this.imageUrl,
       isActive: isActive ?? this.isActive,
       order: order ?? this.order,
       createdAt: createdAt ?? this.createdAt,

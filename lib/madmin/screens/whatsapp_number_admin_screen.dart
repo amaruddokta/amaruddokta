@@ -79,7 +79,7 @@ class _WhatsappNumberAdminScreenState extends State<WhatsappNumberAdminScreen> {
             .stream(primaryKey: ['id'])
             .order('timestamp', ascending: false)
             .execute()
-            .map((data) => data as List<Map<String, dynamic>>),
+            .map((data) => data),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());

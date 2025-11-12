@@ -259,7 +259,7 @@ class _PackageAdminPanelState extends State<PackageAdminPanel> {
       }
 
       // Delete product images from Supabase Storage if they exist
-      if (data != null && data.containsKey('products')) {
+      if (data.containsKey('products')) {
         final products = List<Map<String, dynamic>>.from(data['products']);
         for (var product in products) {
           final productImageUrl = product['imageUrl'] as String?;

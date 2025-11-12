@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "537226906943",
+    "project_id": "amar-uddokta",
+    "storage_bucket": "amar-uddokta.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:537226906943:android:ac3e7db3c87f5285d4d78a",
+        "android_client_info": {
+          "package_name": "com.amar_uddokta.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "537226906943-m3em8ts3is099uchjq25v1qnhj5qbinv.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCrjBVTGqAbFVVjHQnEo_uIBIi0gWtLtvE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "537226906943-m3em8ts3is099uchjq25v1qnhj5qbinv.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

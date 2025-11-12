@@ -143,7 +143,7 @@ class _VideoListSectionState extends State<VideoListSection> {
           .stream(primaryKey: ['id'])
           .order('timestamp', ascending: false)
           .execute()
-          .map((data) => data as List<Map<String, dynamic>>),
+          .map((data) => data),
       builder: (context, snapshot) {
         if (!snapshot.hasData) {
           return const Center(

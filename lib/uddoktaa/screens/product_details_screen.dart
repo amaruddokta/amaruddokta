@@ -36,7 +36,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
   bool _isLoading = false;
   int _quantity = 1;
   final PageController _pageController = PageController();
-  int _currentPage = 0;
+  final int _currentPage = 0;
 
   @override
   void initState() {
@@ -57,13 +57,14 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
     if (sizesData != null && sizesData.isNotEmpty) {
       final firstSizeEntry = sizesData.first as Map<String, dynamic>;
       _currentPrice = (firstSizeEntry['price'] ?? 0).toDouble();
-      _currentUnit =
-          firstSizeEntry['unit']?.toString() ?? ''; // Ensure unit is a string
+      _currentUnit = firstSizeEntry['unit']?.toString() ??
+          ''; // ইউনিট স্ট্রিং নিশ্চিত করুন
       selectedSize = firstSizeEntry['size']?.toString() ?? '';
       _selectedSizeData = firstSizeEntry;
     } else {
       _currentPrice = (widget.product['price'] ?? 0).toDouble();
-      _currentUnit = widget.product['unit'] ?? '';
+      _currentUnit = widget.product['unit']?.toString() ??
+          ''; // ইউনিট স্ট্রিং নিশ্চিত করুন
     }
   }
 
@@ -78,16 +79,18 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
 
     final itemToToggle = CartItem(
       id: widget.productId,
-      name: widget.product['usernames'] ?? 'নাম নেই',
-      company: widget.product['userscompanys'] ?? 'কোম্পানি নেই',
+      name: widget.product['usernames']?.toString() ?? 'নাম নেই',
+      company: widget.product['userscompanys']?.toString() ?? 'কোম্পানি নেই',
       quantity: 1,
       price: _currentPrice,
       unit: _currentUnit,
       discountPercentage: (widget.product['userdiscounts'] ?? 0).toDouble(),
-      imageUrl: widget.product['userimageUrls'] ?? '',
-      category: widget.product['UCategorys'] ?? '',
-      subItemName: widget.product['userItem'] ?? '',
-      details: widget.product['userdetailss'] ?? '',
+      imageUrl: widget.product['userimageUrls']?.toString() ??
+          '', // স্ট্রিং নিশ্চিত করুন
+      category: widget.product['UCategorys']?.toString() ?? '',
+      subItemName: widget.product['userItem']?.toString() ?? '',
+      details: widget.product['userdetailss']?.toString() ??
+          '', // স্ট্রিং নিশ্চিত করুন
       isPackage: false,
       color: selectedColor,
       colors: _getColorsList(),
@@ -126,7 +129,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
     } else if (imagesData is String) {
       return [imagesData];
     }
-    // Ensure userimageUrls is always a string, even if it's an int
+    // userimageUrls সবসময় স্ট্রিং নিশ্চিত করুন, এমনকি যদি সেটি ইন্টিজার হয়
     return [widget.product['userimageUrls']?.toString() ?? ''];
   }
 
@@ -138,7 +141,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
           .eq('id', widget.productId)
           .single();
 
-      int currentViews = (response['views'] as int?) ?? 0;
+      int currentViews = int.tryParse(response['views'].toString()) ?? 0;
       int newViews = currentViews + 1;
 
       await _supabase.from('ponno').update({
@@ -153,12 +156,12 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
   @override
   Widget build(BuildContext context) {
     final product = widget.product;
-    final name = product['usernames'] ?? 'নাম নেই';
+    final name = product['usernames']?.toString() ?? 'নাম নেই';
     final imageUrls = _getImageUrls();
-    final company = product['userscompanys'] ?? 'কোম্পানি নেই';
+    final company = product['userscompanys']?.toString() ?? 'কোম্পানি নেই';
     final discount = (product['userdiscounts'] ?? 0).toDouble();
-    final category = product['UCategorys'] ?? '';
-    final subItemName = product['userItem'] ?? '';
+    final category = product['UCategorys']?.toString() ?? '';
+    final subItemName = product['userItem']?.toString() ?? '';
     final colors = _getColorsList();
     final sizes = _getSizesWithDetails();
 
@@ -187,8 +190,8 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
           company: company,
           price: _currentPrice,
           unit: _currentUnit,
-          details: product['userdetailss']?.toString() ??
-              '', // Ensure details is a string
+          details:
+              product['userdetailss']?.toString() ?? '', // স্ট্রিং নিশ্চিত করুন
           discount: discount,
           category: category,
           subItemName: subItemName,
@@ -314,9 +317,9 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
       builder: (context, snapshot) {
         int views = 0;
         if (snapshot.hasData && snapshot.data!.isNotEmpty) {
-          views = (snapshot.data!.first['views'] as int?) ?? 0;
+          views = int.tryParse(snapshot.data!.first['views'].toString()) ?? 0;
         } else {
-          views = widget.product['views'] ?? 0;
+          views = int.tryParse(widget.product['views'].toString()) ?? 0;
         }
 
         return Row(
@@ -453,7 +456,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                     _selectedSizeData = sizeEntry;
                     _currentPrice = (sizeEntry['price'] ?? 0).toDouble();
                     _currentUnit = sizeEntry['unit']?.toString() ??
-                        ''; // Ensure unit is a string
+                        ''; // ইউনিট স্ট্রিং নিশ্চিত করুন
                   });
                 }
               },

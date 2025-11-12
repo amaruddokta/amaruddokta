@@ -2,7 +2,6 @@ import 'dart:io';
 import 'package:amar_uddokta/uddoktaa/widgets/label_service.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:universal_html/html.dart' as html;
 import 'package:amar_uddokta/uddoktaa/models/order_model.dart';
 import 'package:amar_uddokta/uddoktaa/services/location_service.dart';

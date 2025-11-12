@@ -1,3 +1,5 @@
+// File: lib/models/category_model.dart
+
 class ProductCategory {
   final int? id;
   final String categoriesName;
@@ -8,7 +10,7 @@ class ProductCategory {
   final DateTime? adminUpdatedAt;
 
   ProductCategory({
-    this.id,
+    this.id, // নতুন ক্যাটাগরির জন্য id হবে null
     required this.categoriesName,
     required this.categoriesIcon,
     this.isActive = true,
@@ -17,6 +19,7 @@ class ProductCategory {
     this.adminUpdatedAt,
   });
 
+  // Supabase থেকে আসা JSON ডেটাকে Dart অবজেক্টে রূপান্তর করে
   factory ProductCategory.fromJson(Map<String, dynamic> json) {
     return ProductCategory(
       id: json['id'] as int?,
@@ -33,32 +36,28 @@ class ProductCategory {
     );
   }
 
+  // Dart অবজেক্টকে Supabase এর জন্য JSON ডেটায় রূপান্তর করে
   Map<String, dynamic> toJson() {
-    final Map<String, dynamic> data = {};
+    final data = <String, dynamic>{
+      'categories_name': categoriesName,
+      'categories_icon': categoriesIcon,
+      'is_active': isActive,
+      'order': order,
+    };
 
-    // id শুধুমাত্র আপডেটের সময় প্রয়োজন, নতুন রেকর্ডের জন্য নয়
+    // যদি id থাকে, তাহলে এটি একটি আপডেট অপারেশন।
+    // আমরা id পাঠাব রো-টি আইডেন্টিফাই করার জন্য এবং admin_updated_at আপডেট করার জন্য।
     if (id != null) {
       data['id'] = id;
+      data['admin_updated_at'] = DateTime.now().toIso8601String();
     }
-
-    data['categories_name'] = categoriesName;
-    data['categories_icon'] = categoriesIcon;
-    data['is_active'] = isActive;
-    data['order'] = order;
-
-    // নতুন রেকর্ডের জন্য, সুপাবেস স্বয়ংক্রিয়ভাবে টাইমস্ট্যাম্প সেট করবে
-    // আপডেটের জন্য, আমরা শুধু admin_updated_at পাস করব
-    if (adminCreatedAt != null) {
-      data['admin_created_at'] = adminCreatedAt!.toIso8601String();
-    }
-
-    if (adminUpdatedAt != null) {
-      data['admin_updated_at'] = adminUpdatedAt!.toIso8601String();
-    }
+    // যদি id না থাকে (অর্থাৎ নতুন রেকর্ড), আমরা শুধু উপরের ডেটাগুলো পাঠাব।
+    // Supabase স্বয়ংক্রিয়ভাবে id, admin_created_at এবং admin_updated_at তৈরি করবে।
 
     return data;
   }
 
+  // একটি অবজেক্টের কিছু ফিল্ড আপডেট করে নতুন অবজেক্ট তৈরি করতে ব্যবহৃত হয়
   ProductCategory copyWith({
     int? id,
     String? categoriesName,
