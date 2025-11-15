@@ -451,6 +451,9 @@ class _CartScreenState extends State<CartScreen> {
     final discountedTotal = _calculateDiscountedTotal(grandTotal);
     final usedReferBalance = grandTotal - discountedTotal;
 
+    debugPrint(
+        'CartScreen: _placeOrder called for orderId: $orderId, paymentStatus: $paymentStatus');
+
     await cartController.placeOrder(
       userName: userName,
       userPhone: userPhone,
@@ -483,7 +486,17 @@ class _CartScreenState extends State<CartScreen> {
       duration: Duration(seconds: 5),
     );
 
-    Get.off(() => MyOrdersScreen());
+    debugPrint('CartScreen: Attempting to navigate to MyOrdersScreen.');
+    try {
+      Get.off(() => MyOrdersScreen());
+      debugPrint('CartScreen: Navigation to MyOrdersScreen successful.');
+    } catch (e) {
+      debugPrint('CartScreen: Error during navigation to MyOrdersScreen: $e');
+      Get.snackbar('Navigation Error', 'Could not navigate to My Orders: $e',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.red,
+          colorText: Colors.white);
+    }
   }
 
   Future<void> _startPaymentFlow() async {

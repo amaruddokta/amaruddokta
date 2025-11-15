@@ -2,13 +2,13 @@
 
 import 'package:get/get.dart';
 import 'package:amar_uddokta/madmin/models/order_model.dart';
-import 'package:amar_uddokta/madmin/services/supabase_service.dart'; // Import SupabaseService
-import 'package:amar_uddokta/madmin/widgets/label_service.dart';
-import 'package:get/get.dart'; // Ensure Get is imported for GetxController
+import 'package:amar_uddokta/madmin/services/supabase_service.dart';
+import 'package:amar_uddokta/uddoktaa/widgets/label_service.dart';
+// সমাধান: collection প্যাকেজ থেকে firstWhereOrNull ইম্পোর্ট করুন
+import 'package:collection/collection.dart';
 
 class OrderController extends GetxController {
-  final SupabaseService _supabaseService =
-      SupabaseService(); // Use SupabaseService
+  final SupabaseService _supabaseService = SupabaseService();
   final LabelService labelService = LabelService();
 
   RxList<OrderModel> allOrders = <OrderModel>[].obs;
@@ -30,11 +30,9 @@ class OrderController extends GetxController {
   Future<void> fetchOrders() async {
     isLoading.value = true;
     try {
-      // SupabaseService থেকে অর্ডার আনুন
       _supabaseService.getOrders().listen((orders) {
         allOrders.value = orders;
 
-        // আজকের অর্ডার ফিল্টার করা হচ্ছে
         final today = DateTime.now();
         todayOrders.value = allOrders.where((order) {
           return order.placedAt.year == today.year &&
@@ -54,7 +52,6 @@ class OrderController extends GetxController {
 
   void applyFilters() {
     filteredOrders.value = allOrders.where((order) {
-      // সার্চ কোয়ের জন্য ফিল্টার
       if (searchQuery.value.isNotEmpty &&
           !order.userName
               .toLowerCase()
@@ -65,18 +62,15 @@ class OrderController extends GetxController {
         return false;
       }
 
-      // স্ট্যাটাস ফিল্টার
       if (filterStatus.value.isNotEmpty && order.status != filterStatus.value) {
         return false;
       }
 
-      // পেমেন্ট স্ট্যাটাস ফিল্টার
       if (filterPaymentStatus.value.isNotEmpty &&
           order.paymentStatus != filterPaymentStatus.value) {
         return false;
       }
 
-      // তারিখ ফিল্টার
       if (filterDate.value != null) {
         final orderDate = DateTime(
             order.placedAt.year, order.placedAt.month, order.placedAt.day);
@@ -94,8 +88,17 @@ class OrderController extends GetxController {
   Future<void> updateOrderStatusWithDetails(
       String orderId, Map<String, dynamic> updateData) async {
     try {
+      // সমাধান: firstWhere এর পরিবর্তে firstWhereOrNull ব্যবহার করুন
       final existingOrder =
-          allOrders.firstWhere((order) => order.orderId == orderId);
+          allOrders.firstWhereOrNull((order) => order.orderId == orderId);
+
+      // যদি অর্ডার না পাওয়া যায়, তাহলে ফাংশনটি এখানেই শেষ করুন
+      if (existingOrder == null) {
+        print('Error: Order with ID $orderId not found.');
+        Get.snackbar('Error', 'Order not found.');
+        return;
+      }
+
       final updatedOrder = existingOrder.copyWith(
         status: updateData['status'],
         cancelledAt: updateData['cancelled_at'] != null
@@ -113,8 +116,17 @@ class OrderController extends GetxController {
 
   Future<void> updatePaymentStatus(String orderId, bool isSuccess) async {
     try {
+      // সমাধান: firstWhere এর পরিবর্তে firstWhereOrNull ব্যবহার করুন
       final existingOrder =
-          allOrders.firstWhere((order) => order.orderId == orderId);
+          allOrders.firstWhereOrNull((order) => order.orderId == orderId);
+
+      // যদি অর্ডার না পাওয়া যায়, তাহলে ফাংশনটি এখানেই শেষ করুন
+      if (existingOrder == null) {
+        print('Error: Order with ID $orderId not found.');
+        Get.snackbar('Error', 'Order not found.');
+        return;
+      }
+
       final updatedOrder = existingOrder.copyWith(
         paymentStatus: isSuccess ? 'success' : 'pending',
       );

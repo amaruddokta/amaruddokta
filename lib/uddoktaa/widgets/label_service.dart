@@ -12,7 +12,7 @@ class LabelService {
   Future<void> loadLabels() async {
     try {
       final response = await Supabase.instance.client
-          .from('appLabels')
+          .from('applabels')
           .select('labels')
           .eq('id', 'bn')
           .single();

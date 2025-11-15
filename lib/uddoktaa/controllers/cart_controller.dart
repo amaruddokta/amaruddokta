@@ -180,7 +180,9 @@ class CartController extends GetxController {
       'refer_code': referCode,
       'use_refer_balance': useReferBalance,
       'refer_balance_used': referBalanceUsed,
-      'referer_id': refererId,
+      'referer_id': refererId?.isEmpty ?? true
+          ? null
+          : refererId, // Pass null if refererId is empty or null
       'bonus_given_to_referrer': bonusGivenToReferrer,
     };
 

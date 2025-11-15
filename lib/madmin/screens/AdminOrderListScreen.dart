@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import '../Controller/OrderController.dart';
+import 'package:amar_uddokta/uddoktaa/controllers/OrderController.dart';
 
 class AdminOrderListScreen extends StatelessWidget {
   const AdminOrderListScreen({super.key});

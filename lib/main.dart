@@ -33,7 +33,6 @@ void main() async {
   // Controller গুলো এখানে ইনজেক্ট করো যাতে পুরো অ্যাপ থেকে সহজে ইউজ করা যায়
   Get.put(CartController());
   Get.put(ProductController());
-  Get.put(ProductController());
 
   Get.put(FavoriteController());
 

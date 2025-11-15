@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as supabase_flutter;
 
 class MyOrdersScreen extends StatelessWidget {
+  // এই uid ভেরিয়েবলটি আসলে ভেতরের StreamBuilder থেকেই আসা উচিত, তবে সমস্যা নয়
   final uid = supabase_flutter.Supabase.instance.client.auth.currentUser?.id;
 
   MyOrdersScreen({super.key});
@@ -29,13 +30,15 @@ class MyOrdersScreen extends StatelessWidget {
               if (!authSnapshot.hasData || authSnapshot.data == null) {
                 return Center(child: Text('আপনি লগইন করেননি'));
               }
+              // authSnapshot থেকেই uid নেওয়া হচ্ছে, যা সবচেয়ে নিরাপদ
               final uid = authSnapshot.data!.id;
               return StreamBuilder<List<Map<String, dynamic>>>(
                 stream: supabase_flutter.Supabase.instance.client
                     .from('orders')
-                    .stream(primaryKey: ['id'])
-                    .eq('userId', uid)
-                    .order('placedAt', ascending: false),
+                    // সমাধান: প্রাইমারি কি হলো 'order_id'
+                    .stream(primaryKey: ['order_id'])
+                    .eq('user_id', uid)
+                    .order('placed_at', ascending: false),
                 builder: (context, snapshot) {
                   debugPrint(
                       'MyOrdersScreen StreamBuilder - ConnectionState: ${snapshot.connectionState}');
@@ -64,13 +67,15 @@ class MyOrdersScreen extends StatelessWidget {
                     itemCount: orders.length,
                     itemBuilder: (context, index) {
                       final order = orders[index];
-                      final orderId = order['orderId'];
-                      final grandTotal = order['grandTotal'];
-                      final paymentMethod = order['paymentMethod'];
-                      final placedAt = DateTime.parse(order['placedAt']);
+                      // সমস্ত camelCase কে snake_case এ পরিবর্তন করা হলো
+                      final orderId = order['order_id'];
+                      final grandTotal = order['grand_total'];
+                      final paymentMethod = order['payment_method'];
+                      // সমাধান: String থেকে DateTime এ কনভার্ট করা হচ্ছে
+                      final placedAt = DateTime.parse(order['placed_at']);
                       final status = order['status'];
                       final items = List<Map>.from(order['items']);
-                      final specialMessage = order['specialMessage'] ?? '';
+                      final specialMessage = order['special_message'] ?? '';
 
                       return Card(
                         margin: const EdgeInsets.symmetric(vertical: 8),
@@ -92,13 +97,16 @@ class MyOrdersScreen extends StatelessWidget {
                           ),
                           children: [
                             ListTile(
-                              title: Text('ক্রেতার নাম: ${order['userName']}'),
-                              subtitle: Text('ফোন: ${order['userPhone']}'),
+                              title: Text(
+                                  'ক্রেতার নাম: ${order['user_name']}'), // সমাধান
+                              subtitle:
+                                  Text('ফোন: ${order['user_phone']}'), // সমাধান
                             ),
                             ListTile(
                               title: Text('ঠিকানা:'),
                               subtitle: Text(
-                                  '${order['location']['house']}, ${order['location']['ward']}, ${order['location']['road']}, ${order['location']['village']}, ${order['location']['union']}, ${order['location']['upazila']}, ${order['location']['district']}, ${order['location']['division']}'),
+                                  // ধরে নেওয়া হচ্ছে location JSON এর ভেতরের কীগুলো একই
+                                  '${order['location']['house'] ?? ''}, ${order['location']['ward'] ?? ''}, ${order['location']['road'] ?? ''}, ${order['location']['village'] ?? ''}, ${order['location']['union'] ?? ''}, ${order['location']['upazila'] ?? ''}, ${order['location']['district'] ?? ''}, ${order['location']['division'] ?? ''}'),
                             ),
                             if (specialMessage.isNotEmpty)
                               Container(
@@ -141,7 +149,7 @@ class MyOrdersScreen extends StatelessWidget {
                               ),
                             ListTile(
                               title: Text(
-                                  'ডেলিভারি চার্জ: ৳${order['deliveryCharge']}'),
+                                  'ডেলিভারি চার্জ: ৳${order['delivery_charge']}'), // সমাধান
                             ),
                             _buildTransactionDetails(order),
                             const Divider(),
@@ -202,8 +210,9 @@ class MyOrdersScreen extends StatelessWidget {
                                     label: Text('ডিলিট করুন',
                                         style: TextStyle(
                                             color: Colors.red.shade700)),
-                                    onPressed: () =>
-                                        _showDeleteDialog(context, order['id']),
+                                    // সমাধান: সঠিক order_id পাঠানো হচ্ছে
+                                    onPressed: () => _showDeleteDialog(
+                                        context, order['order_id']),
                                   ),
                                 ],
                               ),
@@ -300,7 +309,8 @@ class MyOrdersScreen extends StatelessWidget {
                   await supabase_flutter.Supabase.instance.client
                       .from('orders')
                       .delete()
-                      .eq('id', orderId);
+                      // সমাধান: সঠিক কলাম 'order_id' ব্যবহার করা হচ্ছে
+                      .eq('order_id', orderId);
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text('অর্ডার সফলভাবে ডিলিট করা হয়েছে'),
@@ -326,13 +336,15 @@ class MyOrdersScreen extends StatelessWidget {
   Future<void> _cancelOrder(
       BuildContext context, Map<String, dynamic> order) async {
     try {
-      final String? refererId = order['refererId'];
+      // সমাধান: সব ক্যামেলকেস কে স্নেককেসে পরিবর্তন করা হলো
+      final String? refererId = order['referer_id'];
       final double bonusGivenToReferrer =
-          (order['bonusGivenToReferrer'] as num?)?.toDouble() ?? 0.0;
-      final bool useReferBalance = order['useReferBalance'] ?? false;
+          (order['bonus_given_to_referrer'] as num?)?.toDouble() ?? 0.0;
+      final bool useReferBalance = order['use_refer_balance'] ?? false;
       final double referBalanceUsed =
-          (order['referBalanceUsed'] as num?)?.toDouble() ?? 0.0;
+          (order['refer_balance_used'] as num?)?.toDouble() ?? 0.0;
 
+      // ধরে নেওয়া হচ্ছে 'users' টেবিলে 'referBalance' নামে একটি কলাম আছে
       if (refererId != null && bonusGivenToReferrer > 0) {
         final refererDoc = await supabase_flutter.Supabase.instance.client
             .from('users')
@@ -365,9 +377,10 @@ class MyOrdersScreen extends StatelessWidget {
 
       await supabase_flutter.Supabase.instance.client.from('orders').update({
         'status': 'cancelled',
-        'cancelledBy': 'user',
-        'cancelledAt': DateTime.now().toIso8601String(),
-      }).eq('id', order['id']);
+        'cancelled_by': 'user', // সমাধান
+        'cancelled_at': DateTime.now().toIso8601String(), // সমাধান
+        // সমাধান: সঠিক কলাম 'order_id' ব্যবহার করা হচ্ছে
+      }).eq('order_id', order['order_id']);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('অর্ডার বাতিল করা হয়েছে'),
@@ -391,17 +404,18 @@ Widget _buildTransactionDetails(Map<String, dynamic> order) {
   return Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      if (orderData.containsKey('trxId') &&
-          orderData['trxId'] != null &&
-          (orderData['trxId'] as String).isNotEmpty)
+      // সমাধান: সব ক্যামেলকেস কে স্নেককেসে পরিবর্তন করা হলো
+      if (orderData.containsKey('trx_id') &&
+          orderData['trx_id'] != null &&
+          (orderData['trx_id'] as String).isNotEmpty)
         ListTile(
-          title: Text('ট্রানজেকশন আইডি: ${orderData['trxId']}'),
+          title: Text('ট্রানজেকশন আইডি: ${orderData['trx_id']}'),
         ),
-      if (orderData.containsKey('userPaymentNumber') &&
-          orderData['userPaymentNumber'] != null &&
-          (orderData['userPaymentNumber'] as String).isNotEmpty)
+      if (orderData.containsKey('user_payment_number') &&
+          orderData['user_payment_number'] != null &&
+          (orderData['user_payment_number'] as String).isNotEmpty)
         ListTile(
-          title: Text('পেমেন্ট নম্বর: ${orderData['userPaymentNumber']}'),
+          title: Text('পেমেন্ট নম্বর: ${orderData['user_payment_number']}'),
         ),
     ],
   );
