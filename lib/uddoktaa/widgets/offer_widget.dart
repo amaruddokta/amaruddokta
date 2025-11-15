@@ -6,11 +6,11 @@ class OfferWidget extends StatefulWidget {
   final int remainingMinutes;
   final VoidCallback onTap;
   const OfferWidget({
-    super.key,
+    Key? key,
     required this.offer,
     required this.remainingMinutes,
     required this.onTap,
-  });
+  }) : super(key: key);
 
   @override
   _OfferWidgetState createState() => _OfferWidgetState();

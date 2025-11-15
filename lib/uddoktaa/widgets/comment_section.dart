@@ -2,10 +2,10 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:flutter_image_compress/flutter_image_compress.dart'; // Import flutter_image_compress
-import 'package:path_provider/path_provider.dart'; // Import path_provider for temporary directory
-import 'package:get/get.dart'; // Added for Get.to
-import 'package:amar_uddokta/uddoktaa/screens/zoomable_image_screen.dart'; // Import ZoomableImageScreen
+import 'package:flutter_image_compress/flutter_image_compress.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:get/get.dart';
+import 'package:amar_uddokta/uddoktaa/screens/zoomable_image_screen.dart';
 
 class CommentSection extends StatefulWidget {
   final String productId;
@@ -19,13 +19,13 @@ class CommentSection extends StatefulWidget {
 class _CommentSectionState extends State<CommentSection> {
   final TextEditingController _commentController = TextEditingController();
   final SupabaseClient _supabase = Supabase.instance.client;
-  final List<File> _imageFiles = []; // Changed to a list for multiple images
+  final List<File> _imageFiles = [];
   bool _isUploading = false;
-  final int maxImages = 3; // Maximum number of images allowed
+  final int maxImages = 3;
 
   Future<void> _pickImage() async {
     final picker = ImagePicker();
-    final pickedFiles = await picker.pickMultiImage(); // Use pickMultiImage
+    final pickedFiles = await picker.pickMultiImage();
 
     if (pickedFiles.isNotEmpty) {
       List<File> newImages = [];
@@ -40,13 +40,12 @@ class _CommentSectionState extends State<CommentSection> {
                 content:
                     Text('${pickedFile.name} ছবির সাইজ 5MB এর কম হতে হবে')),
           );
-          continue; // Skip this image
+          continue;
         }
         newImages.add(imageFile);
       }
 
       setState(() {
-        // Add new images, respecting the maxImages limit
         _imageFiles.addAll(newImages.take(maxImages - _imageFiles.length));
         if (_imageFiles.length > maxImages) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -76,9 +75,9 @@ class _CommentSectionState extends State<CommentSection> {
       XFile? compressedXFile = await FlutterImageCompress.compressAndGetFile(
         image.absolute.path,
         targetPath,
-        quality: 80, // Adjust quality as needed (0-100)
-        minWidth: 1000, // Max width
-        minHeight: 1000, // Max height
+        quality: 80,
+        minWidth: 1000,
+        minHeight: 1000,
       );
 
       if (compressedXFile == null) {
@@ -93,16 +92,22 @@ class _CommentSectionState extends State<CommentSection> {
       final String fileName =
           'comment_images/${DateTime.now().millisecondsSinceEpoch}_${image.path.split('/').last}';
 
-      // Upload the compressed file
-      await _supabase.storage.from('comments').upload(
-            fileName,
+      // Upload the compressed file to Supabase Storage
+      final String fileExtension = image.path.split('.').last;
+      final String path = '$fileName.$fileExtension';
+
+      await _supabase.storage.from('comment_images').upload(
+            path,
             compressedImage,
-            fileOptions: const FileOptions(cacheControl: '3600', upsert: false),
+            fileOptions: FileOptions(
+              cacheControl: '3600',
+              upsert: false,
+            ),
           );
 
-      // Get the download URL
+      // Get the public URL
       final String downloadUrl =
-          _supabase.storage.from('comments').getPublicUrl(fileName);
+          _supabase.storage.from('comment_images').getPublicUrl(path);
       print('Supabase Storage আপলোড সফল: $downloadUrl');
       return downloadUrl;
     } catch (e) {
@@ -153,7 +158,7 @@ class _CommentSectionState extends State<CommentSection> {
           setState(() {
             _isUploading = false;
           });
-          return; // Stop if any image fails to upload
+          return;
         }
       }
     }
@@ -167,11 +172,18 @@ class _CommentSectionState extends State<CommentSection> {
           .from('users')
           .select('name, email')
           .eq('id', user.id)
-          .single();
-      fetchedUserName = response['name'] ?? 'Anonymous';
-      fetchedUserEmail = response['email'] ?? 'N/A';
+          .maybeSingle();
+
+      if (response != null) {
+        fetchedUserName =
+            response['name'] ?? user.userMetadata?['name'] ?? 'Anonymous';
+        fetchedUserEmail = response['email'] ?? user.email ?? 'N/A';
+      } else {
+        fetchedUserName = user.userMetadata?['name'] ?? 'Anonymous';
+      }
     } catch (e) {
       print('ইউজার ডেটা লোড করতে সমস্যা: $e');
+      fetchedUserName = user.userMetadata?['name'] ?? 'Anonymous';
     }
 
     try {
@@ -181,12 +193,14 @@ class _CommentSectionState extends State<CommentSection> {
         'userName': fetchedUserName,
         'userEmail': fetchedUserEmail,
         'comment': _commentController.text.trim(),
-        'imageUrls': imageUrls, // Changed to imageUrls (List<String>)
+        'imageUrls': imageUrls,
+        'timestamp': DateTime.now().toIso8601String(),
+        'status': 'pending', // Default status for moderation
       });
 
       _commentController.clear();
       setState(() {
-        _imageFiles.clear(); // Clear the list of images
+        _imageFiles.clear();
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -290,9 +304,11 @@ class _CommentSectionState extends State<CommentSection> {
     return StreamBuilder<List<Map<String, dynamic>>>(
       stream: _supabase
           .from('product_comments')
-          .stream(primaryKey: ['id'])
+          .select()
           .eq('productId', widget.productId)
-          .order('created_at', ascending: false),
+          .eq('status', 'approved') // Only show approved comments
+          .order('timestamp', ascending: false)
+          .asStream(),
       builder: (context, snapshot) {
         if (snapshot.hasError) {
           return Text('কমেন্ট লোড করতে সমস্যা: ${snapshot.error}');
@@ -306,19 +322,16 @@ class _CommentSectionState extends State<CommentSection> {
           return const Text('কোন মতামত নেই।');
         }
 
-        final comments = snapshot.data!;
         return ListView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          itemCount: comments.length,
+          itemCount: snapshot.data!.length,
           itemBuilder: (context, index) {
-            final commentData = comments[index];
+            final commentData = snapshot.data![index];
             final userName = commentData['userName'] ?? 'Anonymous';
             final commentText = commentData['comment'] ?? '';
             final commentImageUrls = commentData['imageUrls'] as List<dynamic>?;
-            final timestamp = commentData['created_at'] != null
-                ? DateTime.parse(commentData['created_at'])
-                : null;
+            final timestamp = commentData['timestamp'] as String?;
 
             return CommentItemWidget(
               commentData: commentData,
@@ -333,9 +346,10 @@ class _CommentSectionState extends State<CommentSection> {
     );
   }
 
-  String _formatTimestamp(DateTime timestamp) {
+  String _formatTimestamp(String timestamp) {
+    final dateTime = DateTime.parse(timestamp);
     final now = DateTime.now();
-    final difference = now.difference(timestamp);
+    final difference = now.difference(dateTime);
 
     if (difference.inSeconds < 60) {
       return '${difference.inSeconds} সেকেন্ড আগে';
@@ -346,7 +360,7 @@ class _CommentSectionState extends State<CommentSection> {
     } else if (difference.inDays < 7) {
       return '${difference.inDays} দিন আগে';
     } else {
-      return '${timestamp.day}/${timestamp.month}/${timestamp.year}';
+      return '${dateTime.day}/${dateTime.month}/${dateTime.year}';
     }
   }
 
@@ -357,13 +371,12 @@ class _CommentSectionState extends State<CommentSection> {
   }
 }
 
-// নতুন CommentItemWidget
 class CommentItemWidget extends StatefulWidget {
   final Map<String, dynamic> commentData;
   final String userName;
   final String commentText;
   final List<dynamic>? commentImageUrls;
-  final DateTime? timestamp;
+  final String? timestamp;
 
   const CommentItemWidget({
     super.key,
@@ -381,9 +394,10 @@ class CommentItemWidget extends StatefulWidget {
 class _CommentItemWidgetState extends State<CommentItemWidget> {
   bool _isExpanded = false;
 
-  String _formatTimestamp(DateTime timestamp) {
+  String _formatTimestamp(String timestamp) {
+    final dateTime = DateTime.parse(timestamp);
     final now = DateTime.now();
-    final difference = now.difference(timestamp);
+    final difference = now.difference(dateTime);
 
     if (difference.inSeconds < 60) {
       return '${difference.inSeconds} সেকেন্ড আগে';
@@ -394,7 +408,7 @@ class _CommentItemWidgetState extends State<CommentItemWidget> {
     } else if (difference.inDays < 7) {
       return '${difference.inDays} দিন আগে';
     } else {
-      return '${timestamp.day}/${timestamp.month}/${timestamp.year}';
+      return '${dateTime.day}/${dateTime.month}/${dateTime.year}';
     }
   }
 
@@ -448,8 +462,7 @@ class _CommentItemWidgetState extends State<CommentItemWidget> {
                   padding: const EdgeInsets.only(bottom: 8.0),
                   child: Text(
                     widget.commentText,
-                    maxLines:
-                        _isExpanded ? null : 3, // Show full text or 3 lines
+                    maxLines: _isExpanded ? null : 3,
                     overflow: _isExpanded
                         ? TextOverflow.visible
                         : TextOverflow.ellipsis,

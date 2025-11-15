@@ -1,16 +1,19 @@
 import 'dart:io';
 import 'dart:math';
+import 'package:amar_uddokta/uddoktaa/models/user.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:get/get.dart';
 import 'package:path/path.dart' as path;
-import 'package:supabase_flutter/supabase_flutter.dart' as supabase_flutter;
 import 'package:google_sign_in/google_sign_in.dart';
-
+import 'package:supabase_flutter/supabase_flutter.dart' as supabase_flutter;
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:amar_uddokta/uddoktaa/services/auth_service.dart';
+import 'package:amar_uddokta/uddoktaa/services/user_service.dart';
+import 'package:amar_uddokta/uddoktaa/models/user.dart' as AppUser;
 import '../data/location_data.dart';
-import '../services/user_prefs.dart';
-import '../models/user.dart';
+import '../services/user_prefs.dart'; // Added a comment to trigger re-analysis
 
 class RegistrationScreen extends StatefulWidget {
   final bool fromCart;
@@ -28,20 +31,22 @@ class RegistrationScreen extends StatefulWidget {
 }
 
 class _RegistrationScreenState extends State<RegistrationScreen> {
-  // Google Sign-In ইনস্ট্যান্স
   final GoogleSignIn _googleSignIn = GoogleSignIn(
     scopes: [
       'email',
-      'https://www.googleapis.com/auth/userinfo.profile', // Profile scope for name
+      'https://www.googleapis.com/auth/userinfo.profile',
     ],
+    serverClientId:
+        '537226906943-m3em8ts3is099uchjq25v1qnhj5qbinv.apps.googleusercontent.com', // Replace with your Web application client ID from Google Cloud Console
   );
+  final AuthService _authService = AuthService();
+  final UserService _userService = UserService();
 
   @override
   void initState() {
     super.initState();
     // Check if user is already logged in
-    final currentUser =
-        supabase_flutter.Supabase.instance.client.auth.currentUser;
+    final currentUser = _authService.currentUser;
     if (currentUser != null) {
       // If logged in, navigate away
       if (widget.fromCart) {
@@ -82,10 +87,11 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
       debugPrint("Attempting Google Sign-In...");
 
       // Step 1: Initiate sign-in flow
+      await _googleSignIn.signOut();
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
       if (googleUser == null) {
         debugPrint("User cancelled the sign-in flow.");
-        setState(() => _isLoading = false);
+        if (mounted) setState(() => _isLoading = false);
         return;
       }
       debugPrint("Google user selected: ${googleUser.email}");
@@ -96,27 +102,26 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
 
       if (googleAuth.idToken == null) {
         debugPrint("Failed to get ID token from Google.");
-        throw Exception("Google ID token is null.");
+        throw Exception("Google ID token পাওয়া যায়নি।");
       }
       debugPrint("Successfully retrieved ID token.");
 
-      // Step 3: Sign in to Supabase with the ID token
-      final response = await supabase_flutter.Supabase.instance.client.auth
-          .signInWithIdToken(
-        provider: supabase_flutter.OAuthProvider.google,
+      // Step 3: Sign in to Supabase with the ID token using AuthService
+      final AppUser.User? appUser = await _authService.signInWithGoogle(
         idToken: googleAuth.idToken!,
-        // accessToken is not required for signInWithIdToken
+        displayName: googleUser.displayName,
+        email: googleUser.email,
+        phoneNumber: null,
       );
 
-      final user = response.user;
-
-      if (user != null) {
-        debugPrint("Supabase sign-in successful for user: ${user.email}");
-        setState(() {
-          _userEmail = user.email;
-          _nameController.text =
-              googleUser.displayName ?? user.userMetadata?['full_name'] ?? '';
-        });
+      if (appUser != null) {
+        debugPrint("Supabase sign-in successful for user: ${appUser.email}");
+        if (mounted) {
+          setState(() {
+            _userEmail = appUser.email;
+            _nameController.text = appUser.name;
+          });
+        }
 
         Get.snackbar(
           'সফল',
@@ -127,17 +132,36 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
         );
       } else {
         debugPrint("Supabase sign-in failed: User is null.");
-        throw Exception("Failed to create user session in Supabase.");
+        throw Exception("Supabase-এ ব্যবহারকারী সেশন তৈরি করা যায়নি।");
       }
+    } on AuthException catch (e) {
+      debugPrint("Supabase Auth Error: ${e.message}");
+      Get.snackbar(
+        'সাইন-ইন ত্রুটি',
+        'Supabase সাইন-ইন ব্যর্থ হয়েছে: ${e.message}',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red.shade100,
+        colorText: Colors.red.shade800,
+        duration: const Duration(seconds: 5),
+      );
+    } on PlatformException catch (e) {
+      debugPrint("Platform Error: ${e.code} - ${e.message}");
+      Get.snackbar(
+        'প্ল্যাটফর্ম ত্রুটি',
+        'একটি সিস্টেম-স্তরের ত্রুটি ঘটেছে: ${e.message}',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.orange.shade100,
+        colorText: Colors.orange.shade800,
+        duration: const Duration(seconds: 5),
+      );
     } catch (e) {
       debugPrint("Google Sign-In Error: $e");
       String errorMessage = "Google সাইন-ইন ব্যর্থ হয়েছে।";
 
-      // Provide more specific error messages if possible
-      if (e is PlatformException) {
-        errorMessage = "ত্রুটি: ${e.code} - ${e.message}";
-      } else if (e.toString().contains("network")) {
+      if (e.toString().contains("network")) {
         errorMessage = "নেটওয়ার্ক ত্রুটি। আপনার ইন্টারনেট সংযোগ পরীক্ষা করুন।";
+      } else {
+        errorMessage = 'একটি অপ্রত্যাশিত ত্রুটি ঘটেছে: ${e.toString()}';
       }
 
       Get.snackbar(
@@ -168,38 +192,9 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
     String userEmail,
   ) async {
     try {
-      if (!await imageFile.exists()) {
-        debugPrint('File does not exist: ${imageFile.path}');
-        return null;
-      }
-
-      String fileExtension = path.extension(imageFile.path);
-      if (fileExtension.isEmpty || fileExtension == '.') {
-        fileExtension = '.jpg';
-      }
-
-      final fileName =
-          'profile1/${userEmail.replaceAll('.', '_')}_${DateTime.now().millisecondsSinceEpoch}$fileExtension';
-
-      final String publicUrl = await supabase_flutter
-          .Supabase.instance.client.storage
-          .from('profile_images')
-          .upload(
-            fileName,
-            imageFile,
-            fileOptions: const supabase_flutter.FileOptions(
-              cacheControl: '3600',
-              upsert: false,
-              contentType: 'image/jpeg',
-            ),
-          );
-
-      debugPrint('File uploaded successfully: $publicUrl');
+      final String? publicUrl =
+          await _userService.uploadProfileImage(imageFile, userEmail);
       return publicUrl;
-    } on supabase_flutter.StorageException catch (e) {
-      debugPrint('Supabase Storage error: ${e.message}');
-      Get.snackbar('আপলোড ত্রুটি', 'সুপাবেস স্টোরেজ ত্রুটি: ${e.message}');
-      return null;
     } catch (e) {
       debugPrint('Upload error: $e');
       Get.snackbar(
@@ -250,8 +245,9 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
 
     try {
       final user = supabase_flutter.Supabase.instance.client.auth.currentUser;
-      if (user == null)
+      if (user == null) {
         throw Exception("User not authenticated after Google sign-in.");
+      }
 
       String referCode = _generateReferCode(email);
 
@@ -289,7 +285,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
           .match({'id': user.id});
 
       await UserPrefs.saveUser(
-        User(
+        AppUser.User(
           id: user.id,
           name: _nameController.text.trim(),
           email: email,
@@ -320,15 +316,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
         'imageUrl': _imageUrl,
       };
 
-      if (widget.fromCart) {
-        if (widget.onRegistrationComplete != null) {
-          await widget.onRegistrationComplete!(registrationData);
-        } else {
-          Get.back();
-        }
-      } else {
-        Get.offAllNamed('/profile', arguments: registrationData);
-      }
+      Get.offAllNamed('/cart');
     } catch (e) {
       Get.snackbar('ত্রুটি', 'রেজিস্ট্রেশন ব্যর্থ: ${e.toString()}');
     } finally {
@@ -353,9 +341,6 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // ... (The rest of the build method remains the same)
-    // I am keeping the build method as is, assuming it's correct.
-    // If you have issues in the UI, let me know.
     return Scaffold(
       appBar: AppBar(
         title: const Text('রেজিস্ট্রেশন',
@@ -397,7 +382,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                           _imageUrl != null && _imageUrl!.isNotEmpty
                               ? NetworkImage(_imageUrl!) as ImageProvider
                               : (_profileImage != null
-                                  ? FileImage(_profileImage!)!
+                                  ? FileImage(_profileImage!)
                                   : const AssetImage(
                                           'assets/image/default_user.png')
                                       as ImageProvider),
@@ -492,10 +477,12 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                           icon: Icons.phone,
                           keyboardType: TextInputType.phone,
                           validator: (value) {
-                            if (value == null || value.isEmpty)
+                            if (value == null || value.isEmpty) {
                               return 'ফোন নম্বর লিখুন';
-                            if (!RegExp(r'^\d{10,15}$').hasMatch(value))
+                            }
+                            if (!RegExp(r'^\d{10,15}$').hasMatch(value)) {
                               return 'সঠিক ফোন নম্বর দিন';
+                            }
                             return null;
                           }),
                       const SizedBox(height: 15),
@@ -723,7 +710,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
       required void Function(String?)? onChanged,
       String? Function(String?)? validator}) {
     return DropdownButtonFormField<String>(
-      value: value,
+      initialValue: value,
       decoration: InputDecoration(
         labelText: label,
         labelStyle:

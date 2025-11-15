@@ -1,7 +1,7 @@
 // sales_detail_screen.dart
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:intl/intl.dart';
 
 class SalesDetailScreen extends StatelessWidget {
   const SalesDetailScreen({super.key});
@@ -10,28 +10,25 @@ class SalesDetailScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final today =
         DateTime.now().toUtc().add(const Duration(hours: 6)); // BD Time
-    final startOfDay =
-        DateTime(today.year, today.month, today.day).toIso8601String();
+    final startOfDay = DateTime(today.year, today.month, today.day);
 
     return Scaffold(
       appBar: AppBar(title: const Text('আজকের বিক্রির বিস্তারিত')),
       body: StreamBuilder<List<Map<String, dynamic>>>(
         stream: Supabase.instance.client
             .from('orders')
-            .stream(primaryKey: ['orderId'])
-            .gte('placedAt', startOfDay) // Use placedAt for filtering
-            .execute()
-            .map((data) => data),
+            .stream(primaryKey: ['id'])
+            .gte('timestamp', startOfDay.toIso8601String())
+            .order('timestamp', ascending: false),
         builder: (context, snapshot) {
           if (!snapshot.hasData) {
             return const Center(child: CircularProgressIndicator());
           }
 
-          final docs = snapshot.data!;
+          final orders = snapshot.data!;
           double totalSales = 0;
-          for (var order in docs) {
-            totalSales += (order['grandTotal'] as num?)?.toDouble() ??
-                0.0; // Use grandTotal
+          for (var order in orders) {
+            totalSales += (order['totalPrice'] ?? 0).toDouble();
           }
 
           return Column(
@@ -39,24 +36,24 @@ class SalesDetailScreen extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Text(
-                  'মোট অর্ডার: ${docs.length}\nমোট বিক্রি: ৳${totalSales.toStringAsFixed(2)}',
+                  'মোট অর্ডার: ${orders.length}\nমোট বিক্রি: ৳${totalSales.toStringAsFixed(2)}',
                   style: const TextStyle(
                       fontSize: 18, fontWeight: FontWeight.bold),
                 ),
               ),
               Expanded(
                 child: ListView.builder(
-                  itemCount: docs.length,
+                  itemCount: orders.length,
                   itemBuilder: (context, index) {
-                    final order = docs[index];
-                    final timestamp = DateTime.parse(order['placedAt'])
-                        .toLocal(); // Use placedAt
+                    final order = orders[index];
+                    final timestamp =
+                        DateTime.parse(order['timestamp']).toLocal();
                     final formattedDate =
                         DateFormat('dd-MM-yyyy hh:mm a').format(timestamp);
                     return ListTile(
-                      title: Text('Order ID: ${order['orderId']}'),
+                      title: Text('Order ID: ${order['id']}'),
                       subtitle: Text(
-                          'Amount: ৳${(order['grandTotal'] as num?)?.toDouble() ?? 0.0}\nTime: $formattedDate'),
+                          'Amount: ৳${order['totalPrice']}\nTime: $formattedDate'),
                       trailing: const Icon(Icons.receipt_long),
                     );
                   },

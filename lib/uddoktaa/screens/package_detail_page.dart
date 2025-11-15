@@ -21,7 +21,7 @@ class PackageDetailPage extends StatelessWidget {
       child: Scaffold(
         backgroundColor: Colors.transparent,
         appBar: AppBar(
-          title: Text(package.pacName),
+          title: Text(package.name),
           backgroundColor: Colors.transparent,
           elevation: 0,
         ),
@@ -34,7 +34,7 @@ class PackageDetailPage extends StatelessWidget {
               ClipRRect(
                 borderRadius: BorderRadius.circular(12),
                 child: CachedNetworkImage(
-                  imageUrl: package.pacImageUrl,
+                  imageUrl: package.imageUrl,
                   width: double.infinity,
                   height: 200,
                   fit: BoxFit.cover,
@@ -50,19 +50,19 @@ class PackageDetailPage extends StatelessWidget {
               Text('বিবরণ',
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               SizedBox(height: 8),
-              Text(package.pacDescription),
+              Text(package.description),
 
               SizedBox(height: 16),
               // দাম ও ছাড়
-              Text('মূল্য: ৳${package.pacTotalPrice.toStringAsFixed(0)}',
+              Text('মূল্য: ৳${package.totalPrice.toStringAsFixed(0)}',
                   style: TextStyle(fontSize: 16)),
 
               Text(
-                'ছাড়ের পরিমাণ: ৳${(package.pacTotalPrice - package.pacDiscountedPrice).toStringAsFixed(0)}',
+                'ছাড়ের পরিমাণ: ৳${(package.totalPrice - package.discountedPrice).toStringAsFixed(0)}',
                 style: TextStyle(fontSize: 16, color: Colors.red),
               ),
               Text(
-                'ছাড়ের পর মূল্য: ৳${package.pacDiscountedPrice.toStringAsFixed(0)}',
+                'ছাড়ের পর মূল্য: ৳${package.discountedPrice.toStringAsFixed(0)}',
                 style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
@@ -79,10 +79,10 @@ class PackageDetailPage extends StatelessWidget {
               ListView.separated(
                 physics: NeverScrollableScrollPhysics(),
                 shrinkWrap: true,
-                itemCount: package.pacProducts.length,
+                itemCount: package.products.length,
                 separatorBuilder: (_, __) => SizedBox(height: 4),
                 itemBuilder: (ctx, idx) {
-                  final item = package.pacProducts[idx];
+                  final item = package.products[idx];
                   return ListTile(
                     contentPadding: EdgeInsets.zero,
                     leading: ClipRRect(
@@ -115,16 +115,16 @@ class PackageDetailPage extends StatelessWidget {
                   onPressed: () {
                     cartController.addItemToCart(CartItem(
                       id: package.id,
-                      name: package.pacName,
+                      name: package.name,
                       company: 'প্যাকেজ',
                       quantity: 1,
-                      price: package.pacDiscountedPrice,
+                      price: package.discountedPrice,
                       unit: 'প্যাকেজ',
-                      discountPercentage: package.pacDiscountPercentage,
-                      imageUrl: package.pacImageUrl,
+                      discountPercentage: package.discountPercentage,
+                      imageUrl: package.imageUrl,
                       category: 'প্যাকেজ',
                       subItemName: '',
-                      details: package.pacDescription,
+                      details: package.description,
                       isPackage: true,
                     ));
                     Get.snackbar(

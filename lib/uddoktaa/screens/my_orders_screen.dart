@@ -1,9 +1,9 @@
 import 'package:amar_uddokta/uddoktaa/widgets/background_container.dart';
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' as supabase_flutter;
 
 class MyOrdersScreen extends StatelessWidget {
-  final String? uid = Supabase.instance.client.auth.currentUser?.id;
+  final uid = supabase_flutter.Supabase.instance.client.auth.currentUser?.id;
 
   MyOrdersScreen({super.key});
 
@@ -21,21 +21,21 @@ class MyOrdersScreen extends StatelessWidget {
           backgroundColor: Colors.transparent,
           elevation: 0,
         ),
-        body: StreamBuilder<AuthState>(
-            stream: Supabase.instance.client.auth.onAuthStateChange,
+        body: StreamBuilder<supabase_flutter.User?>(
+            stream: supabase_flutter
+                .Supabase.instance.client.auth.onAuthStateChange
+                .map((data) => data.session?.user),
             builder: (context, authSnapshot) {
-              if (!authSnapshot.hasData ||
-                  authSnapshot.data?.event == AuthChangeEvent.signedOut) {
+              if (!authSnapshot.hasData || authSnapshot.data == null) {
                 return Center(child: Text('আপনি লগইন করেননি'));
               }
-              final uid = authSnapshot.data!.session!.user.id;
+              final uid = authSnapshot.data!.id;
               return StreamBuilder<List<Map<String, dynamic>>>(
-                stream: Supabase.instance.client
+                stream: supabase_flutter.Supabase.instance.client
                     .from('orders')
-                    .stream(primaryKey: ['orderId'])
+                    .stream(primaryKey: ['id'])
                     .eq('userId', uid)
-                    .order('placedAt',
-                        ascending: false), // placedAt ব্যবহার করা হচ্ছে
+                    .order('placedAt', ascending: false),
                 builder: (context, snapshot) {
                   debugPrint(
                       'MyOrdersScreen StreamBuilder - ConnectionState: ${snapshot.connectionState}');
@@ -67,16 +67,10 @@ class MyOrdersScreen extends StatelessWidget {
                       final orderId = order['orderId'];
                       final grandTotal = order['grandTotal'];
                       final paymentMethod = order['paymentMethod'];
-                      final placedAt = DateTime.parse(
-                          order['placedAt']); // placedAt ব্যবহার করা হচ্ছে
+                      final placedAt = DateTime.parse(order['placedAt']);
                       final status = order['status'];
                       final items = List<Map>.from(order['items']);
-                      // Get special message if available - using safe access
-                      final orderData = order;
-                      final specialMessage =
-                          orderData.containsKey('specialMessage') == true
-                              ? orderData['specialMessage'] ?? ''
-                              : '';
+                      final specialMessage = order['specialMessage'] ?? '';
 
                       return Card(
                         margin: const EdgeInsets.symmetric(vertical: 8),
@@ -106,7 +100,6 @@ class MyOrdersScreen extends StatelessWidget {
                               subtitle: Text(
                                   '${order['location']['house']}, ${order['location']['ward']}, ${order['location']['road']}, ${order['location']['village']}, ${order['location']['union']}, ${order['location']['upazila']}, ${order['location']['district']}, ${order['location']['division']}'),
                             ),
-                            // Special Message Section - Added
                             if (specialMessage.isNotEmpty)
                               Container(
                                 margin: const EdgeInsets.symmetric(
@@ -150,7 +143,6 @@ class MyOrdersScreen extends StatelessWidget {
                               title: Text(
                                   'ডেলিভারি চার্জ: ৳${order['deliveryCharge']}'),
                             ),
-                            // Call helper method to build transaction details
                             _buildTransactionDetails(order),
                             const Divider(),
                             Padding(
@@ -204,15 +196,14 @@ class MyOrdersScreen extends StatelessWidget {
                                       },
                                       child: Text('রিভিউ দিন'),
                                     ),
-                                  // Delete Button
                                   TextButton.icon(
                                     icon: Icon(Icons.delete_forever,
                                         color: Colors.red.shade700, size: 20),
                                     label: Text('ডিলিট করুন',
                                         style: TextStyle(
                                             color: Colors.red.shade700)),
-                                    onPressed: () => _showDeleteDialog(
-                                        context, order['orderId']),
+                                    onPressed: () =>
+                                        _showDeleteDialog(context, order['id']),
                                   ),
                                 ],
                               ),
@@ -306,10 +297,10 @@ class MyOrdersScreen extends StatelessWidget {
               onPressed: () async {
                 Navigator.of(context).pop(); // Close the dialog
                 try {
-                  await Supabase.instance.client
+                  await supabase_flutter.Supabase.instance.client
                       .from('orders')
                       .delete()
-                      .eq('orderId', orderId);
+                      .eq('id', orderId);
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text('অর্ডার সফলভাবে ডিলিট করা হয়েছে'),
@@ -335,7 +326,6 @@ class MyOrdersScreen extends StatelessWidget {
   Future<void> _cancelOrder(
       BuildContext context, Map<String, dynamic> order) async {
     try {
-      // Retrieve referral data from the order
       final String? refererId = order['refererId'];
       final double bonusGivenToReferrer =
           (order['bonusGivenToReferrer'] as num?)?.toDouble() ?? 0.0;
@@ -343,43 +333,41 @@ class MyOrdersScreen extends StatelessWidget {
       final double referBalanceUsed =
           (order['referBalanceUsed'] as num?)?.toDouble() ?? 0.0;
 
-      // 1. Deduct bonus from referrer if applicable
       if (refererId != null && bonusGivenToReferrer > 0) {
-        final refererData = await Supabase.instance.client
+        final refererDoc = await supabase_flutter.Supabase.instance.client
             .from('users')
             .select('referBalance')
             .eq('id', refererId)
             .single();
         final currentRefererBalance =
-            (refererData['referBalance'] as num?)?.toDouble() ?? 0.0;
-        await Supabase.instance.client.from('users').update({
+            (refererDoc['referBalance'] as num?)?.toDouble() ?? 0.0;
+        await supabase_flutter.Supabase.instance.client.from('users').update({
           'referBalance': currentRefererBalance - bonusGivenToReferrer,
         }).eq('id', refererId);
       }
 
-      // 2. Refund used referral balance to current user if applicable
       if (useReferBalance && referBalanceUsed > 0) {
-        final currentUser = Supabase.instance.client.auth.currentUser;
+        final currentUser =
+            supabase_flutter.Supabase.instance.client.auth.currentUser;
         if (currentUser != null) {
-          final userData = await Supabase.instance.client
+          final userDoc = await supabase_flutter.Supabase.instance.client
               .from('users')
               .select('referBalance')
               .eq('id', currentUser.id)
               .single();
           final currentUserBalance =
-              (userData['referBalance'] as num?)?.toDouble() ?? 0.0;
-          await Supabase.instance.client.from('users').update({
+              (userDoc['referBalance'] as num?)?.toDouble() ?? 0.0;
+          await supabase_flutter.Supabase.instance.client.from('users').update({
             'referBalance': currentUserBalance + referBalanceUsed,
           }).eq('id', currentUser.id);
         }
       }
 
-      // 3. Update order status
-      await Supabase.instance.client.from('orders').update({
+      await supabase_flutter.Supabase.instance.client.from('orders').update({
         'status': 'cancelled',
         'cancelledBy': 'user',
         'cancelledAt': DateTime.now().toIso8601String(),
-      }).eq('orderId', order['orderId']);
+      }).eq('id', order['id']);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('অর্ডার বাতিল করা হয়েছে'),
@@ -397,7 +385,6 @@ class MyOrdersScreen extends StatelessWidget {
   }
 }
 
-// Helper method to build the transaction and payment details
 Widget _buildTransactionDetails(Map<String, dynamic> order) {
   final orderData = order;
 

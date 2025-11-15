@@ -1,5 +1,3 @@
-// ignore_for_file: avoid_web_libraries_in_flutter, unused_local_variable, unused_import
-
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -50,11 +48,11 @@ class _OrdersExportPanelState extends State<OrdersExportPanel> {
 
     for (final order in orders) {
       final row = grid.rows.add();
-      row.cells[0].value = order['orderId'] ?? '';
-      row.cells[1].value = order['userName'] ?? '';
-      row.cells[2].value = order['grandTotal'].toString();
+      row.cells[0].value = order['order_id'] ?? '';
+      row.cells[1].value = order['user_name'] ?? '';
+      row.cells[2].value = order['grand_total'].toString();
       row.cells[3].value = order['status'] ?? '';
-      row.cells[4].value = order['paymentStatus'] ?? '';
+      row.cells[4].value = order['payment_status'] ?? '';
     }
 
     grid.draw(page: page, bounds: const Rect.fromLTWH(0, 0, 500, 800));
@@ -82,13 +80,13 @@ class _OrdersExportPanelState extends State<OrdersExportPanel> {
 
     for (int i = 0; i < orders.length; i++) {
       final order = orders[i];
-      sheet.getRangeByIndex(i + 2, 1).setText(order['orderId'] ?? '');
-      sheet.getRangeByIndex(i + 2, 2).setText(order['userName'] ?? '');
+      sheet.getRangeByIndex(i + 2, 1).setText(order['order_id'] ?? '');
+      sheet.getRangeByIndex(i + 2, 2).setText(order['user_name'] ?? '');
       sheet
           .getRangeByIndex(i + 2, 3)
-          .setNumber(order['grandTotal']?.toDouble() ?? 0);
+          .setNumber(order['grand_total']?.toDouble() ?? 0);
       sheet.getRangeByIndex(i + 2, 4).setText(order['status'] ?? '');
-      sheet.getRangeByIndex(i + 2, 5).setText(order['paymentStatus'] ?? '');
+      sheet.getRangeByIndex(i + 2, 5).setText(order['payment_status'] ?? '');
     }
 
     final bytes = workbook.saveAsStream();
@@ -133,14 +131,14 @@ class _OrdersExportPanelState extends State<OrdersExportPanel> {
                     itemBuilder: (context, index) {
                       final order = orders[index];
                       return ListTile(
-                        title: Text('Order: ${order['orderId']}'),
+                        title: Text('Order: ${order['order_id']}'),
                         subtitle: Text(
-                            '${order['userName']} - ৳${order['grandTotal']}'),
+                            '${order['user_name']} - ৳${order['grand_total']}'),
                         trailing: Column(
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
                             Text(order['status'] ?? ''),
-                            Text(order['paymentStatus'] ?? ''),
+                            Text(order['payment_status'] ?? ''),
                           ],
                         ),
                       );

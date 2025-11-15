@@ -1,3 +1,4 @@
+// File: lib/widgets/category_filter.dart
 import 'package:flutter/material.dart';
 
 class CategoryFilter extends StatelessWidget {

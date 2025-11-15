@@ -2,7 +2,6 @@
 
 import 'package:amar_uddokta/Quran/my_app.dart' as quran_app;
 import 'package:amar_uddokta/uddoktaa/controllers/cart_controller.dart';
-import 'package:amar_uddokta/uddoktaa/controllers/package_controller.dart';
 import 'package:amar_uddokta/uddoktaa/controllers/ProductController.dart';
 import 'package:amar_uddokta/uddoktaa/controllers/favorite_controller.dart';
 
@@ -34,7 +33,8 @@ void main() async {
   // Controller গুলো এখানে ইনজেক্ট করো যাতে পুরো অ্যাপ থেকে সহজে ইউজ করা যায়
   Get.put(CartController());
   Get.put(ProductController());
-  Get.put(PackageController());
+  Get.put(ProductController());
+
   Get.put(FavoriteController());
 
   runApp(const MyApp());
@@ -78,9 +78,7 @@ class MyApp extends StatelessWidget {
           ), // কুরআন অ্যাপের হোম স্ক্রিন
           GetPage(
             name: '/profile',
-            page: () => app_profile.ProfileScreen(
-              registrationData: Get.arguments,
-            ),
+            page: () => app_profile.ProfileScreen(),
           ),
           GetPage(name: '/cart', page: () => CartScreen()),
           GetPage(name: '/favorite', page: () => FavoriteScreen()),

@@ -5,6 +5,7 @@ import 'package:amar_uddokta/uddoktaa/models/cart_item.dart';
 import 'package:amar_uddokta/uddoktaa/widgets/background_container.dart';
 import 'package:get/get.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:amar_uddokta/uddoktaa/screens/favorite_screen.dart';
 import 'package:amar_uddokta/uddoktaa/screens/zoomable_image_screen.dart';
 import 'package:amar_uddokta/uddoktaa/widgets/comment_section.dart';
 
@@ -25,47 +26,54 @@ class ProductDetailsScreen extends StatefulWidget {
 class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
   String selectedColor = '';
   String selectedSize = '';
-  double _currentPrice = 0.0;
-  String _currentUnit = '';
-  Map<String, dynamic>? _selectedSizeData;
-
   final CartController cartController = Get.find<CartController>();
   final FavoriteController favoriteController = Get.find<FavoriteController>();
-  final SupabaseClient _supabase = Supabase.instance.client;
+  final SupabaseClient _supabase =
+      Supabase.instance.client; // FirebaseFirestore এর পরিবর্তে
   bool _isFavorite = false;
   bool _isLoading = false;
   int _quantity = 1;
   final PageController _pageController = PageController();
-  final int _currentPage = 0;
+  int _currentPage = 0;
+
+  // Size-related variables
+  bool _hasSizes = false;
+  List<Map<String, dynamic>> _sizesData = [];
+  double _selectedPrice = 0.0;
+  String _selectedUnit = '';
 
   @override
   void initState() {
     super.initState();
     _checkIfFavorite();
-    _initializePriceAndUnit();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _updateProductViews());
+    _initializeSizes();
+  }
+
+  void _initializeSizes() {
+    final sizesData = widget.product['sizes'] as List<dynamic>?;
+    if (sizesData != null && sizesData.isNotEmpty) {
+      setState(() {
+        _hasSizes = true;
+        _sizesData = sizesData.cast<Map<String, dynamic>>();
+        if (_sizesData.isNotEmpty) {
+          selectedSize = _sizesData.first['size']?.toString() ?? '';
+          _selectedPrice = (_sizesData.first['price'] ?? 0).toDouble();
+          _selectedUnit = _sizesData.first['unit']?.toString() ?? '';
+        }
+      });
+    } else {
+      setState(() {
+        _hasSizes = false;
+        _selectedPrice = (widget.product['price'] ?? 0).toDouble();
+        _selectedUnit = widget.product['unit'] ?? '';
+      });
+    }
   }
 
   @override
   void dispose() {
     _pageController.dispose();
     super.dispose();
-  }
-
-  void _initializePriceAndUnit() {
-    final List<dynamic>? sizesData = widget.product['sizes'] as List<dynamic>?;
-    if (sizesData != null && sizesData.isNotEmpty) {
-      final firstSizeEntry = sizesData.first as Map<String, dynamic>;
-      _currentPrice = (firstSizeEntry['price'] ?? 0).toDouble();
-      _currentUnit = firstSizeEntry['unit']?.toString() ??
-          ''; // ইউনিট স্ট্রিং নিশ্চিত করুন
-      selectedSize = firstSizeEntry['size']?.toString() ?? '';
-      _selectedSizeData = firstSizeEntry;
-    } else {
-      _currentPrice = (widget.product['price'] ?? 0).toDouble();
-      _currentUnit = widget.product['unit']?.toString() ??
-          ''; // ইউনিট স্ট্রিং নিশ্চিত করুন
-    }
   }
 
   Future<void> _checkIfFavorite() async {
@@ -79,18 +87,16 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
 
     final itemToToggle = CartItem(
       id: widget.productId,
-      name: widget.product['usernames']?.toString() ?? 'নাম নেই',
-      company: widget.product['userscompanys']?.toString() ?? 'কোম্পানি নেই',
+      name: widget.product['name'] ?? 'নাম নেই',
+      company: widget.product['company'] ?? 'কোম্পানি নেই',
       quantity: 1,
-      price: _currentPrice,
-      unit: _currentUnit,
-      discountPercentage: (widget.product['userdiscounts'] ?? 0).toDouble(),
-      imageUrl: widget.product['userimageUrls']?.toString() ??
-          '', // স্ট্রিং নিশ্চিত করুন
-      category: widget.product['UCategorys']?.toString() ?? '',
-      subItemName: widget.product['userItem']?.toString() ?? '',
-      details: widget.product['userdetailss']?.toString() ??
-          '', // স্ট্রিং নিশ্চিত করুন
+      price: _selectedPrice,
+      unit: _selectedUnit,
+      discountPercentage: (widget.product['discount'] ?? 0).toDouble(),
+      imageUrl: widget.product['imageUrl'] ?? '',
+      category: widget.product['category'] ?? '',
+      subItemName: widget.product['subItemName'] ?? '',
+      details: widget.product['details'] ?? '',
       isPackage: false,
       color: selectedColor,
       colors: _getColorsList(),
@@ -105,19 +111,11 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
   }
 
   List<String> _getColorsList() {
-    final colorsData = widget.product['usercolors'];
+    final colorsData = widget.product['colors'];
     if (colorsData is List) {
       return colorsData.map((e) => e.toString()).toList();
     } else if (colorsData is String) {
       return colorsData.split(',').map((e) => e.trim()).toList();
-    }
-    return [];
-  }
-
-  List<Map<String, dynamic>> _getSizesWithDetails() {
-    final sizesData = widget.product['sizes'];
-    if (sizesData is List) {
-      return sizesData.map((e) => e as Map<String, dynamic>).toList();
     }
     return [];
   }
@@ -129,23 +127,21 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
     } else if (imagesData is String) {
       return [imagesData];
     }
-    // userimageUrls সবসময় স্ট্রিং নিশ্চিত করুন, এমনকি যদি সেটি ইন্টিজার হয়
-    return [widget.product['userimageUrls']?.toString() ?? ''];
+    return [widget.product['imageUrl'] ?? ''];
   }
 
   Future<void> _updateProductViews() async {
     try {
       final response = await _supabase
-          .from('ponno')
+          .from('products')
           .select('views')
           .eq('id', widget.productId)
           .single();
 
-      int currentViews = int.tryParse(response['views'].toString()) ?? 0;
-      int newViews = currentViews + 1;
+      int currentViews = (response['views'] as int?) ?? 0;
 
-      await _supabase.from('ponno').update({
-        'views': newViews,
+      await _supabase.from('products').update({
+        'views': currentViews + 1,
         'lastViewed': DateTime.now().toIso8601String(),
       }).eq('id', widget.productId);
     } catch (e) {
@@ -153,17 +149,32 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
     }
   }
 
+  void _onSizeChanged(String newSize) {
+    setState(() {
+      selectedSize = newSize;
+      // Find the price and unit for the selected size
+      final sizeData = _sizesData.firstWhere(
+        (size) => size['size'].toString() == newSize,
+        orElse: () => _sizesData.isNotEmpty ? _sizesData.first : {},
+      );
+      _selectedPrice = (sizeData['price'] ?? 0).toDouble();
+      _selectedUnit = sizeData['unit']?.toString() ?? '';
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final product = widget.product;
-    final name = product['usernames']?.toString() ?? 'নাম নেই';
+    final name = product['name'] ?? 'নাম নেই';
     final imageUrls = _getImageUrls();
-    final company = product['userscompanys']?.toString() ?? 'কোম্পানি নেই';
-    final discount = (product['userdiscounts'] ?? 0).toDouble();
-    final category = product['UCategorys']?.toString() ?? '';
-    final subItemName = product['userItem']?.toString() ?? '';
+    final company = product['company'] ?? 'কোম্পানি নেই';
+    final details = product['details'] ?? '';
+    final discount = (product['discount'] ?? 0).toDouble();
+    final category = product['category'] ?? '';
+    final subItemName = product['subItemName'] ?? '';
     final colors = _getColorsList();
-    final sizes = _getSizesWithDetails();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) => _updateProductViews());
 
     return BackgroundContainer(
       child: Scaffold(
@@ -188,15 +199,11 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
           name: name,
           imageUrls: imageUrls,
           company: company,
-          price: _currentPrice,
-          unit: _currentUnit,
-          details:
-              product['userdetailss']?.toString() ?? '', // স্ট্রিং নিশ্চিত করুন
+          details: details,
           discount: discount,
           category: category,
           subItemName: subItemName,
           colors: colors,
-          sizes: sizes,
         ),
       ),
     );
@@ -206,14 +213,11 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
     required String name,
     required List<String> imageUrls,
     required String company,
-    required double price,
-    required String unit,
     required String details,
     required double discount,
     required String category,
     required String subItemName,
     required List<String> colors,
-    required List<Map<String, dynamic>> sizes,
   }) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
@@ -226,19 +230,19 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
           const SizedBox(height: 8),
           _buildCompanyInfo(company),
           const SizedBox(height: 8),
-          _buildPriceInfo(price, discount),
+          _buildPriceInfo(_selectedPrice, discount),
           if (colors.isNotEmpty) _buildColorSelection(colors),
-          if (sizes.isNotEmpty) _buildSizeSelection(sizes),
-          _buildUnitInfo(unit),
+          if (_hasSizes) _buildSizeSelection(),
+          _buildUnitInfo(_selectedUnit),
           _buildDetailsSection(details),
           const SizedBox(height: 16),
           _buildAddToCartButton(
             name: name,
             company: company,
-            price: price,
-            unit: unit,
+            price: _selectedPrice,
+            unit: _selectedUnit,
             discount: discount,
-            imageUrl: imageUrls.isNotEmpty ? imageUrls.first : '',
+            imageUrl: imageUrls.first,
             category: category,
             subItemName: subItemName,
             details: details,
@@ -251,75 +255,108 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
   }
 
   Widget _buildProductImage(List<String> imageUrls, double discount) {
-    if (imageUrls.isEmpty) {
-      return Container(
-        height: 250,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12),
-          color: Colors.grey[200],
-        ),
-        child: const Icon(Icons.broken_image, size: 50, color: Colors.grey),
-      );
-    }
-    final imageUrl = imageUrls.first;
-    return SizedBox(
-      height: 250,
-      child: Stack(
-        children: [
-          GestureDetector(
-            onTap: () => Get.to(() => ZoomableImageScreen(imageUrl: imageUrl)),
-            child: Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-                color: Colors.grey[200],
+    return Column(
+      children: [
+        SizedBox(
+          height: 250,
+          child: Stack(
+            children: [
+              PageView.builder(
+                controller: _pageController,
+                itemCount: imageUrls.length,
+                onPageChanged: (int page) {
+                  setState(() {
+                    _currentPage = page;
+                  });
+                },
+                itemBuilder: (context, index) {
+                  return GestureDetector(
+                    onTap: () {
+                      Get.to(() =>
+                          ZoomableImageScreen(imageUrl: imageUrls[index]));
+                    },
+                    child: Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        color: Colors.grey[200],
+                      ),
+                      child: Image.network(
+                        imageUrls[index],
+                        width: double.infinity,
+                        height: double.infinity,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) => Container(
+                          color: Colors.grey[200],
+                          child: const Icon(Icons.broken_image, size: 50),
+                        ),
+                      ),
+                    ),
+                  );
+                },
               ),
-              child: Image.network(
-                imageUrl,
-                width: double.infinity,
-                height: double.infinity,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) => Container(
-                  color: Colors.grey[200],
-                  child: const Icon(Icons.broken_image, size: 50),
+              if (discount > 0)
+                Positioned(
+                  top: 10,
+                  right: 10,
+                  child: Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: Colors.red,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      '${discount.toInt()}% ছাড়',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+        if (imageUrls.length > 1)
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(
+              imageUrls.length,
+              (index) => AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                margin:
+                    const EdgeInsets.symmetric(horizontal: 4.0, vertical: 8.0),
+                height: 8.0,
+                width: _currentPage == index ? 24.0 : 8.0,
+                decoration: BoxDecoration(
+                  color: _currentPage == index ? Colors.red : Colors.grey,
+                  borderRadius: BorderRadius.circular(12),
                 ),
               ),
             ),
           ),
-          if (discount > 0)
-            Positioned(
-              top: 10,
-              right: 10,
-              child: Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: Colors.red,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  '${discount.toInt()}% ছাড়',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ),
-        ],
-      ),
+        Positioned(
+          bottom: 10,
+          left: 0,
+          right: 0,
+          child: _buildQuantityController(),
+        ),
+      ],
     );
   }
 
   Widget _buildProductHeader(String name) {
-    return StreamBuilder<List<Map<String, dynamic>>>(
+    return StreamBuilder<Map<String, dynamic>>(
       stream: _supabase
-          .from('ponno')
-          .stream(primaryKey: ['id']).eq('id', widget.productId),
+          .from('products')
+          .stream(primaryKey: ['id'])
+          .eq('id', widget.productId)
+          .map((event) => event.first),
       builder: (context, snapshot) {
         int views = 0;
-        if (snapshot.hasData && snapshot.data!.isNotEmpty) {
-          views = int.tryParse(snapshot.data!.first['views'].toString()) ?? 0;
+        if (snapshot.hasData && snapshot.data != null) {
+          views = snapshot.data!['views'] ?? 0;
         } else {
-          views = int.tryParse(widget.product['views'].toString()) ?? 0;
+          views = widget.product['views'] ?? 0;
         }
 
         return Row(
@@ -432,7 +469,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
     );
   }
 
-  Widget _buildSizeSelection(List<Map<String, dynamic>> sizes) {
+  Widget _buildSizeSelection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -442,22 +479,18 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
         Wrap(
           spacing: 8.0,
           runSpacing: 4.0,
-          children: sizes.map((sizeEntry) {
-            final sizeName = sizeEntry['size']?.toString() ?? '';
+          children: _sizesData.map((sizeData) {
+            final sizeName = sizeData['size']?.toString() ?? '';
+            final price = sizeData['price']?.toString() ?? '0';
+            final unit = sizeData['unit']?.toString() ?? '';
             final isSelected = selectedSize == sizeName;
 
             return ChoiceChip(
-              label: Text(sizeName),
+              label: Text('$sizeName - ৳$price/$unit'),
               selected: isSelected,
               onSelected: (isSelected) {
                 if (isSelected) {
-                  setState(() {
-                    selectedSize = sizeName;
-                    _selectedSizeData = sizeEntry;
-                    _currentPrice = (sizeEntry['price'] ?? 0).toDouble();
-                    _currentUnit = sizeEntry['unit']?.toString() ??
-                        ''; // ইউনিট স্ট্রিং নিশ্চিত করুন
-                  });
+                  _onSizeChanged(sizeName);
                 }
               },
               selectedColor: Colors.green[200],
@@ -571,7 +604,6 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
               onPressed: quantity == 0
                   ? () {
                       final colors = _getColorsList();
-                      final sizes = _getSizesWithDetails();
 
                       if (colors.isNotEmpty && selectedColor.isEmpty) {
                         ScaffoldMessenger.of(context).showSnackBar(
@@ -582,7 +614,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                         return;
                       }
 
-                      if (sizes.isNotEmpty && selectedSize.isEmpty) {
+                      if (_hasSizes && selectedSize.isEmpty) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
                               content:
@@ -591,13 +623,16 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                         return;
                       }
 
+                      final discountedPrice =
+                          discount > 0 ? price * (100 - discount) / 100 : price;
+
                       final itemToAdd = CartItem(
                         id: widget.productId,
                         name: name,
                         company: company,
                         quantity: _quantity,
-                        price: _currentPrice,
-                        unit: _currentUnit,
+                        price: discountedPrice,
+                        unit: unit,
                         discountPercentage: discount,
                         imageUrl: imageUrl,
                         category: category,
@@ -612,7 +647,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                       cartController.addItemToCart(itemToAdd);
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
-                          content: Text('কার্টে যুক্ত হয়েছে'),
+                          content: Text('কার্টে যোগ করুন'),
                           duration: Duration(seconds: 1),
                         ),
                       );

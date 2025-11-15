@@ -1,4 +1,5 @@
 import 'package:amar_uddokta/uddoktaa/screens/product_details_screen.dart';
+import 'package:amar_uddokta/uddoktaa/widgets/background_container.dart';
 import 'package:amar_uddokta/uddoktaa/controllers/favorite_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -12,10 +13,11 @@ class AllItemsList extends StatefulWidget {
   final int crossAxisCount;
 
   const AllItemsList(
-      {super.key,
+      {Key? key,
       required this.categoryName,
       this.searchQuery = '',
-      this.crossAxisCount = 2});
+      this.crossAxisCount = 2})
+      : super(key: key);
 
   @override
   State<AllItemsList> createState() => _AllItemsListState();
@@ -23,7 +25,8 @@ class AllItemsList extends StatefulWidget {
 
 class _AllItemsListState extends State<AllItemsList> {
   final CartController cartController = Get.find<CartController>();
-  final FavoriteController favoriteController = Get.find<FavoriteController>();
+  final FavoriteController favoriteController = Get.put(FavoriteController());
+  final SupabaseClient _supabase = Supabase.instance.client;
   Map<String, int> quantities = {};
   late Future<List<Map<String, dynamic>>> futureProducts;
 
@@ -54,72 +57,44 @@ class _AllItemsListState extends State<AllItemsList> {
     }
   }
 
-  // UPDATED: Now fetches category name using a JOIN
   Future<List<Map<String, dynamic>>> fetchProducts() async {
     try {
-      final List<Map<String, dynamic>> response =
-          await Supabase.instance.client.from('ponno').select('''
-            *,
-            categories (
-              categories_name
-            )
-          ''');
-      final allProducts = response.map((data) {
-        return data;
-      }).toList();
+      final response = await _supabase.from('products').select();
 
-      // UPDATED: Access category name from the nested 'categories' object
+      final allProducts = List<Map<String, dynamic>>.from(response as List);
+
       final filteredByCategory = widget.categoryName.isEmpty
           ? allProducts
           : allProducts.where((product) {
-              final category = (product['categories']?['categories_name'] ?? '')
-                  .toString()
-                  .trim();
+              final category = (product['category'] ?? '').toString().trim();
               return category == widget.categoryName.trim();
             }).toList();
 
       final filteredBySearch = filteredByCategory.where((product) {
-        final name = (product['usernames'] ?? '').toString().toLowerCase();
+        final name = (product['name'] ?? '').toString().toLowerCase();
         return name.contains(widget.searchQuery.toLowerCase());
       }).toList();
 
       for (var product in filteredBySearch) {
-        final id = product['id'] ?? product['usernames'];
-        if (id != null) {
-          quantities.putIfAbsent(id, () => 0);
+        final name = product['name'];
+        if (name != null) {
+          quantities.putIfAbsent(name, () => 0);
         }
       }
+      // Sync with cart controller
       final cartItems = cartController.cartItems;
       for (var item in cartItems) {
-        if (quantities.containsKey(item.id)) {
-          quantities[item.id] = item.quantity;
+        if (quantities.containsKey(item.name)) {
+          quantities[item.name] = item.quantity;
         }
       }
 
-      filteredBySearch.shuffle();
+      filteredBySearch.shuffle(); // Randomize the order
       return filteredBySearch;
     } catch (e) {
-      debugPrint('পণ্য লোড করতে সমস্যা: $e');
+      debugPrint('Error fetching products: $e');
       return [];
     }
-  }
-
-  List<String> _getColorsList(dynamic colorsData) {
-    if (colorsData == null) return [];
-    if (colorsData is List) {
-      return colorsData.map((e) => e.toString()).toList();
-    } else if (colorsData is String) {
-      return colorsData.split(',').map((e) => e.trim()).toList();
-    }
-    return [];
-  }
-
-  List<Map<String, dynamic>> _getSizesWithDetails(dynamic sizesData) {
-    if (sizesData == null) return [];
-    if (sizesData is List) {
-      return sizesData.map((e) => e as Map<String, dynamic>).toList();
-    }
-    return [];
   }
 
   @override
@@ -150,37 +125,26 @@ class _AllItemsListState extends State<AllItemsList> {
           itemCount: products.length,
           itemBuilder: (context, index) {
             final product = products[index];
-            final name = product['usernames'] ?? 'Unknown';
-            final sizes = _getSizesWithDetails(product['sizes']);
-            double price = (product['price'] ?? 0).toDouble();
-            String unit = product['unit'] ?? '';
-
-            if (sizes.isNotEmpty) {
-              final firstSizeDetails = sizes.first;
-              price = (firstSizeDetails['price'] ?? 0).toDouble();
-              unit = firstSizeDetails['unit'] ?? '';
-            }
-
-            final discount = (product['userdiscounts'] ?? 0).toDouble();
-            final imageUrl = product['userimageUrls'] ?? '';
-            final company = product['userscompanys'] ?? 'Unknown';
-            final details = product['userdetailss'] ?? '';
-            final stock = product['userstocks'] ?? 0;
-            final subItemName = (product['userItem'] ?? 'Others').toString();
-            final productId = product['id'] ?? name;
-            // UPDATED: Access category name from nested object
-            final category = product['categories']?['categories_name'] ??
-                widget.categoryName;
+            final name = product['name'] ?? 'Unknown';
+            final price = (product['price'] ?? 0).toDouble();
+            final unit = product['unit'] ?? '';
+            final discount = (product['discount'] ?? 0);
+            final imageUrl = product['imageUrl'] ?? '';
+            final company = product['company'] ?? 'Unknown';
+            final details = product['details'] ?? '';
+            final stock = product['stock'] ?? 0;
+            final subItemName = (product['subItemName'] ?? 'Others')
+                .toString(); // Keep subItemName for CartItem
 
             List<String>? colors;
-            final colorsData = product['usercolors'];
+            final colorsData = product['colors'];
             if (colorsData is List) {
               colors = colorsData.map((e) => e.toString()).toList();
             } else if (colorsData is String) {
               colors = colorsData.split(',').map((e) => e.trim()).toList();
             }
 
-            final qty = quantities[productId] ?? 0;
+            final qty = quantities[product['id'] ?? name] ?? 0;
             final discountedPrice =
                 (price * (100 - discount) / 100).toStringAsFixed(2);
 
@@ -202,7 +166,7 @@ class _AllItemsListState extends State<AllItemsList> {
                               MaterialPageRoute(
                                 builder: (context) => ProductDetailsScreen(
                                   product: product,
-                                  productId: productId.toString(),
+                                  productId: product['id'] ?? '',
                                 ),
                               ),
                             );
@@ -238,7 +202,7 @@ class _AllItemsListState extends State<AllItemsList> {
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Text(
-                                '-${discount.toInt()}%',
+                                '-$discount%',
                                 style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 11,
@@ -253,25 +217,27 @@ class _AllItemsListState extends State<AllItemsList> {
                           child: Obx(
                             () => IconButton(
                               icon: Icon(
-                                favoriteController.isFavorite(productId)
+                                favoriteController
+                                        .isFavorite(product['id'] ?? name)
                                     ? Icons.favorite
                                     : Icons.favorite_border,
-                                color: favoriteController.isFavorite(productId)
+                                color: favoriteController
+                                        .isFavorite(product['id'] ?? name)
                                     ? Colors.red
                                     : null,
                               ),
                               onPressed: () {
                                 favoriteController.toggleFavorite(
                                   CartItem(
-                                    id: productId,
+                                    id: product['id'] ?? name,
                                     name: name,
                                     company: company,
                                     quantity: qty > 0 ? qty : 1,
                                     price: price,
                                     unit: unit,
-                                    discountPercentage: discount,
+                                    discountPercentage: discount.toDouble(),
                                     imageUrl: imageUrl,
-                                    category: category,
+                                    category: widget.categoryName,
                                     subItemName: subItemName,
                                     details: details,
                                     isPackage: false,
@@ -363,8 +329,8 @@ class _AllItemsListState extends State<AllItemsList> {
                         : qty == 0
                             ? ElevatedButton.icon(
                                 onPressed: () {
-                                  final colorsData = product['usercolors'];
-                                  final sizesData = product['sizes'];
+                                  final colorsData = product['colors'];
+                                  final sizesData = product['size'];
 
                                   final bool hasColors = colorsData != null &&
                                       (colorsData is List
@@ -382,24 +348,24 @@ class _AllItemsListState extends State<AllItemsList> {
                                         builder: (context) =>
                                             ProductDetailsScreen(
                                           product: product,
-                                          productId: productId.toString(),
+                                          productId: product['id'] ?? '',
                                         ),
                                       ),
                                     );
                                   } else {
                                     setState(() {
-                                      quantities[productId] = 1;
+                                      quantities[name] = 1;
                                     });
                                     cartController.addItemToCart(CartItem(
-                                      id: productId,
+                                      id: product['id'] ?? name,
                                       name: name,
                                       company: company,
                                       quantity: 1,
                                       price: price,
                                       unit: unit,
-                                      discountPercentage: discount,
+                                      discountPercentage: discount.toDouble(),
                                       imageUrl: imageUrl,
-                                      category: category,
+                                      category: widget.categoryName,
                                       subItemName: subItemName,
                                       details: details,
                                       isPackage: false,
@@ -421,8 +387,8 @@ class _AllItemsListState extends State<AllItemsList> {
                                 ),
                               )
                             : Builder(builder: (context) {
-                                final colorsData = product['usercolors'];
-                                final sizesData = product['sizes'];
+                                final colorsData = product['colors'];
+                                final sizesData = product['size'];
                                 final bool hasColors = colorsData != null &&
                                     (colorsData is List
                                         ? colorsData.isNotEmpty
@@ -442,7 +408,7 @@ class _AllItemsListState extends State<AllItemsList> {
                                           builder: (context) =>
                                               ProductDetailsScreen(
                                             product: product,
-                                            productId: productId.toString(),
+                                            productId: product['id'] ?? '',
                                           ),
                                         ),
                                       );
@@ -466,7 +432,7 @@ class _AllItemsListState extends State<AllItemsList> {
                                               size: 18),
                                           onPressed: () {
                                             cartController.decreaseQuantity(
-                                                productId,
+                                                product['id'] ?? name,
                                                 color: null,
                                                 size: null);
                                           },
@@ -481,7 +447,7 @@ class _AllItemsListState extends State<AllItemsList> {
                                           icon: const Icon(Icons.add, size: 18),
                                           onPressed: () {
                                             cartController.increaseQuantity(
-                                                productId,
+                                                product['id'] ?? name,
                                                 color: null,
                                                 size: null);
                                           },

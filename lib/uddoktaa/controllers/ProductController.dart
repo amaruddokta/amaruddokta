@@ -1,8 +1,12 @@
+import 'dart:io'; // File হ্যান্ডলিং এর জন্য
 import 'package:get/get.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:amar_uddokta/uddoktaa/services/supabase_service.dart'
+    as UddoktaaSupabaseService; // Alias to avoid conflict
 
 class ProductController extends GetxController {
-  final SupabaseClient _supabase = Supabase.instance.client;
+  // Supabase ক্লায়েন্ট ইনিশিয়ালাইজেশন
+  final UddoktaaSupabaseService.SupabaseService _supabaseService =
+      UddoktaaSupabaseService.SupabaseService();
   final RxList<Map<String, dynamic>> products = <Map<String, dynamic>>[].obs;
   final RxBool isLoading = true.obs;
 
@@ -12,27 +16,22 @@ class ProductController extends GetxController {
     fetchProducts();
   }
 
+  // সব প্রোডাক্ট ডাটাবেস থেকে আনা
   Future<void> fetchProducts() async {
     try {
       isLoading(true);
-      final List<Map<String, dynamic>> response =
-          await _supabase.from('products').select();
-
-      products.assignAll(response.map((data) {
-        return {
-          'id': data['id'],
-          ...data,
-          'rating': (data['rating'] as num?)?.toDouble() ?? 0.0,
-          'reviewCount': data['reviewCount'] ?? 0,
-        };
-      }).toList());
+      // SupabaseService থেকে ডেটা আনা
+      _supabaseService.getProducts().listen((data) {
+        products.assignAll(data);
+      });
     } catch (e) {
-      Get.snackbar('Error', 'Failed to fetch products: ${e.toString()}');
+      Get.snackbar('Error', 'An unexpected error occurred: ${e.toString()}');
     } finally {
       isLoading(false);
     }
   }
 
+  // এই মেথডগুলোর কোনো পরিবর্তন লাগেনি, কারণ এগুলো লোকাল `products` লিস্টে কাজ করে
   List<Map<String, dynamic>> getProductsByCategory(String category) {
     return products
         .where((product) => product['category'] == category)
@@ -71,39 +70,74 @@ class ProductController extends GetxController {
   }
 
   List<Map<String, dynamic>> getTopRatedProducts() {
-    return products
-      ..sort((a, b) => (b['rating'] as num).compareTo(a['rating'] as num));
+    // লিস্টটিকে সরাসরি সর্ট করে দেয়, তাই একটি নতুন লিস্টে কপি করে নেওয়া ভালো
+    final sortedProducts = List<Map<String, dynamic>>.from(products);
+    sortedProducts
+        .sort((a, b) => (b['rating'] as num).compareTo(a['rating'] as num));
+    return sortedProducts;
   }
 
   List<Map<String, dynamic>> getDiscountedProducts() {
     return products.where((product) => (product['discount'] ?? 0) > 0).toList();
   }
 
+  // নতুন প্রোডাক্ট ডাটাবেসে যোগ করা
   Future<void> addProduct(Map<String, dynamic> productData) async {
     try {
-      await _supabase.from('products').insert(productData);
-      await fetchProducts();
+      await _supabaseService.addProduct(productData);
+      // fetchProducts(); // Stream ব্যবহার করায় ম্যানুয়ালি রিফ্রেশ করার প্রয়োজন নেই
+      Get.snackbar('Success', 'Product added successfully!');
     } catch (e) {
       Get.snackbar('Error', 'Failed to add product: ${e.toString()}');
     }
   }
 
+  // প্রোডাক্ট আপডেট করা
   Future<void> updateProduct(
       String id, Map<String, dynamic> updatedData) async {
     try {
-      await _supabase.from('products').update(updatedData).eq('id', id);
-      await fetchProducts();
+      await _supabaseService.updateProduct(id, updatedData);
+      // fetchProducts(); // Stream ব্যবহার করায় ম্যানুয়ালি রিফ্রেশ করার প্রয়োজন নেই
+      Get.snackbar('Success', 'Product updated successfully!');
     } catch (e) {
       Get.snackbar('Error', 'Failed to update product: ${e.toString()}');
     }
   }
 
+  // প্রোডাক্ট ডিলিট করা
   Future<void> deleteProduct(String id) async {
     try {
-      await _supabase.from('products').delete().eq('id', id);
-      await fetchProducts();
+      await _supabaseService.deleteProduct(id);
+      // fetchProducts(); // Stream ব্যবহার করায় ম্যানুয়ালি রিফ্রেশ করার প্রয়োজন নেই
+      Get.snackbar('Success', 'Product deleted successfully!');
     } catch (e) {
       Get.snackbar('Error', 'Failed to delete product: ${e.toString()}');
+    }
+  }
+
+  // ==========================================================
+  // Supabase Storage এর জন্য নতুন মেথড (ইমেজ আপলোড/ডিলিট)
+  // ==========================================================
+
+  /// একটি ফাইল (যেমন ইমেজ) Supabase Storage এ আপলোড করে এবং পাবলিক URL টি রিটার্ন করে।
+  /// [file] হলো আপলোড করার জন্য ইমেজ ফাইলটি।
+  /// [productId] হলো প্রোডাক্টের আইডি, যা ফাইলের পাথ ইউনিক রাখতে সাহায্য করবে।
+  Future<String?> uploadProductImage(File file, String productId) async {
+    try {
+      return await _supabaseService.uploadProductImage(file, productId);
+    } catch (e) {
+      Get.snackbar('Error', 'Failed to upload image: ${e.toString()}');
+      return null;
+    }
+  }
+
+  /// Supabase Storage থেকে একটি ইমেজ ডিলিট করে।
+  /// [imageUrl] হলো সেই ইমেজের পাবলিক URL, যার থেকে ফাইলের পাথ বের করা হবে।
+  Future<void> deleteProductImage(String imageUrl) async {
+    try {
+      await _supabaseService.deleteProductImage(imageUrl);
+    } catch (e) {
+      Get.snackbar('Error', 'Failed to delete image: ${e.toString()}');
     }
   }
 }

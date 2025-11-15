@@ -7,7 +7,7 @@ import 'package:get/get.dart';
 class RealTimeOfferScreen extends StatefulWidget {
   final Map<String, dynamic> offer;
 
-  const RealTimeOfferScreen({super.key, required this.offer});
+  const RealTimeOfferScreen({Key? key, required this.offer}) : super(key: key);
 
   @override
   _RealTimeOfferScreenState createState() => _RealTimeOfferScreenState();

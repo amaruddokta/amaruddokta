@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:amar_uddokta/uddoktaa/services/user_prefs.dart';
+import 'package:amar_uddokta/uddoktaa/models/user.dart';
 
 class SplashScreen extends StatefulWidget {
-  const SplashScreen({super.key});
-
   @override
   _SplashScreenState createState() => _SplashScreenState();
 }
@@ -26,7 +26,7 @@ class _SplashScreenState extends State<SplashScreen> {
       backgroundColor: Colors.white,
       body: Center(
         child: Image.asset(
-          'assets/image/amarUddokta.png', // Using an existing image
+          'assets/image/আমার উদ্যোক্তা আমার গর্ব.png',
           width: MediaQuery.of(context).size.width,
           height: 300,
         ),

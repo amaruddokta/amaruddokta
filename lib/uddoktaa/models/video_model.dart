@@ -12,16 +12,8 @@ class Video {
   factory Video.fromFirestore(Map<String, dynamic> data, String id) {
     return Video(
       id: id,
-      link: data['adminurlvideos'] ?? '',
+      link: data['link'] ?? '',
       timestamp: data['timestamp']?.toDate() ?? DateTime.now(),
-    );
-  }
-
-  factory Video.fromMap(Map<String, dynamic> data) {
-    return Video(
-      id: data['id'],
-      link: data['adminurlvideos'] ?? '',
-      timestamp: DateTime.parse(data['timestamp']),
     );
   }
 

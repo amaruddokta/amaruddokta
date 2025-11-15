@@ -10,7 +10,7 @@ class SearchResultsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Search Results for "$searchQuery"'),
+        title: Text('Search Results for "${searchQuery}"'),
       ),
       body: SingleChildScrollView(
         child: LayoutBuilder(

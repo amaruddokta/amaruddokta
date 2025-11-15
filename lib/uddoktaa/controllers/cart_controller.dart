@@ -1,5 +1,4 @@
 import 'package:get/get.dart';
-import 'package:get/get.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/cart_item.dart';
 
@@ -21,38 +20,44 @@ class CartController extends GetxController {
       String division, String district, String upazila) async {
     try {
       // First try to get specific fee for upazila
-      final upazilaResponse = await _supabase
+      final response = await _supabase
           .from('delivery_fees')
-          .select('fee')
+          .select()
           .eq('division', division)
           .eq('district', district)
           .eq('upazila', upazila)
           .maybeSingle();
-      if (upazilaResponse != null) {
-        return double.parse(upazilaResponse['fee'].toString());
+
+      if (response != null) {
+        return double.parse(response['fee'].toString());
       }
+
       // If not found, try to get fee for district
       final districtResponse = await _supabase
           .from('delivery_fees')
-          .select('fee')
+          .select()
           .eq('division', division)
           .eq('district', district)
-          .isFilter('upazila', null)
+          .filter('upazila', 'is', null) // Corrected filter for null check
           .maybeSingle();
+
       if (districtResponse != null) {
         return double.parse(districtResponse['fee'].toString());
       }
+
       // If not found, try to get fee for division
       final divisionResponse = await _supabase
           .from('delivery_fees')
-          .select('fee')
+          .select()
           .eq('division', division)
-          .isFilter('district', null)
-          .isFilter('upazila', null)
+          .filter('district', 'is', null) // Corrected filter for null check
+          .filter('upazila', 'is', null) // Corrected filter for null check
           .maybeSingle();
+
       if (divisionResponse != null) {
         return double.parse(divisionResponse['fee'].toString());
       }
+
       // If no specific fee found, return default fee
       return 30.0;
     } catch (e) {
@@ -70,7 +75,10 @@ class CartController extends GetxController {
           .eq('referCode', referCode)
           .maybeSingle();
 
-      return response;
+      if (response != null) {
+        return response;
+      }
+      return null;
     } catch (e) {
       print('Error getting referer data: $e');
       return null;
@@ -84,11 +92,15 @@ class CartController extends GetxController {
           .from('users')
           .select('referBalance')
           .eq('id', refererId)
-          .single();
-      final data = response;
+          .maybeSingle();
 
-      final currentBalance =
-          (data['referBalance'] as num?)?.toDouble() ?? 0.0;
+      if (response == null) {
+        print('Error: Referer not found');
+        return false;
+      }
+
+      final data = response;
+      final currentBalance = data['referBalance']?.toDouble() ?? 0.0;
       final newBalance = currentBalance + bonus;
 
       await _supabase.from('users').update({
@@ -96,7 +108,6 @@ class CartController extends GetxController {
       }).eq('id', refererId);
 
       return true;
-          return false;
     } catch (e) {
       print('Error updating referer balance: $e');
       return false;
@@ -147,28 +158,30 @@ class CartController extends GetxController {
     }
 
     final orderData = {
-      'orderId': orderId,
-      'userName': userName,
-      'userPhone': userPhone,
+      'order_id': orderId,
+      'user_name': userName,
+      'user_phone': userPhone,
       'location': userLocation,
-      'userGpsLocation': userGpsLocation, // ✅ GPS লোকেশন অর্ডার ডেটাতে
-      'specialMessage': specialMessage,
+      'user_gps_location': userGpsLocation, // ✅ GPS লোকেশন অর্ডার ডেটাতে
+      'special_message': specialMessage,
       'items': items,
       'total': total,
-      'deliveryCharge': deliveryCharge,
-      'grandTotal': grandTotal,
-      'paymentMethod': paymentMethod,
-      'trxId': trxId,
-      'userPaymentNumber': userPaymentNumber ?? '',
+      'delivery_charge': deliveryCharge,
+      'grand_total': grandTotal,
+      'payment_method': paymentMethod,
+      'trx_id': trxId,
+      'user_payment_number': userPaymentNumber ?? '',
       'status': 'pending',
-      'paymentStatus': paymentStatus ??
+      'payment_status': paymentStatus ??
           (paymentMethod == 'Cash on Delivery' ? 'pending' : 'awaiting'),
-      'userId': _supabase.auth.currentUser?.id,
-      'referCode': referCode,
-      'useReferBalance': useReferBalance,
-      'referBalanceUsed': referBalanceUsed,
-      'refererId': refererId,
-      'bonusGivenToReferrer': bonusGivenToReferrer,
+      'placed_at':
+          DateTime.now().toIso8601String(), // Supabase compatible timestamp
+      'user_id': _supabase.auth.currentUser?.id, // Supabase user ID
+      'refer_code': referCode,
+      'use_refer_balance': useReferBalance,
+      'refer_balance_used': referBalanceUsed,
+      'referer_id': refererId,
+      'bonus_given_to_referrer': bonusGivenToReferrer,
     };
 
     await _supabase.from('orders').insert(orderData);
@@ -181,7 +194,7 @@ class CartController extends GetxController {
   Future<void> markPaymentSuccess(String orderId) async {
     await _supabase
         .from('orders')
-        .update({'paymentStatus': 'success'}).eq('orderId', orderId);
+        .update({'payment_status': 'success'}).eq('order_id', orderId);
   }
 
   void removeFromCart(String itemId, {String? color, String? size}) {

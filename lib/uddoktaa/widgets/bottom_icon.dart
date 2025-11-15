@@ -10,12 +10,12 @@ class BottomIcon extends StatelessWidget {
   final VoidCallback onPressed;
 
   const BottomIcon({
-    super.key,
+    Key? key,
     required this.icon,
     required this.label,
     required this.color,
     required this.onPressed,
-  });
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {

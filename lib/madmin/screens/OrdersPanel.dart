@@ -1,8 +1,8 @@
 // ignore_for_file: unused_import
 
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:intl/intl.dart';
 import '../services/export_service.dart';
 
 class OrdersPanel extends StatefulWidget {
@@ -18,12 +18,12 @@ class _OrdersPanelState extends State<OrdersPanel> {
   String _statusFilter = 'All';
   String _paymentStatusFilter = 'All';
   DateTimeRange? _selectedDateRange;
-  final int _limit = 10;
-  Map<String, dynamic>? _lastDocument;
+  int _limit = 10;
+  int _offset = 0;
   bool _isLoading = false;
   bool _hasMore = true;
   bool _isAscending = false;
-  String _sortField = 'placedAt'; // Changed to placedAt
+  String _sortField = 'placed_at';
 
   int totalOrders = 0;
   int pendingOrders = 0;
@@ -37,82 +37,87 @@ class _OrdersPanelState extends State<OrdersPanel> {
   }
 
   Future<void> _fetchSummary() async {
-    final response = await _supabase.from('orders').select();
-    totalOrders = response.length;
-    pendingOrders = response.where((d) => d['status'] == 'pending').length;
-    successOrders =
-        response.where((d) => d['paymentStatus'] == 'success').length;
+    final snapshot = await _supabase.from('orders').select('count');
+    totalOrders = snapshot.length;
+
+    final pendingSnapshot =
+        await _supabase.from('orders').select('count').eq('status', 'pending');
+    pendingOrders = pendingSnapshot.length;
+
+    final successSnapshot = await _supabase
+        .from('orders')
+        .select('count')
+        .eq('payment_status', 'success');
+    successOrders = successSnapshot.length;
+
     setState(() {});
   }
 
   Future<void> _fetchOrders({bool reset = false}) async {
-    if (_isLoading || (!_hasMore && !reset)) return;
+    if (_isLoading || !_hasMore && !reset) return;
     setState(() => _isLoading = true);
 
-    PostgrestFilterBuilder<PostgrestList> filterBuilder =
-        _supabase.from('orders').select();
+    var query = _supabase.from('orders').select('*');
 
     if (_statusFilter != 'All') {
-      filterBuilder = filterBuilder.eq('status', _statusFilter);
+      query = query.eq('status', _statusFilter);
     }
     if (_paymentStatusFilter != 'All') {
-      filterBuilder = filterBuilder.eq('paymentStatus', _paymentStatusFilter);
+      query = query.eq('payment_status', _paymentStatusFilter);
     }
     if (_selectedDateRange != null) {
-      filterBuilder = filterBuilder.gte(
-          'placedAt', _selectedDateRange!.start.toIso8601String());
-      filterBuilder = filterBuilder.lte(
-          'placedAt', _selectedDateRange!.end.toIso8601String());
+      query =
+          query.gte('placed_at', _selectedDateRange!.start.toIso8601String());
+      query = query.lte('placed_at', _selectedDateRange!.end.toIso8601String());
     }
 
-    // Apply pagination after initial filters
-    if (_lastDocument != null && !reset) {
-      filterBuilder = filterBuilder.gt('id', _lastDocument!['id']);
+    var orderedQuery = query.order(_sortField, ascending: _isAscending);
+    var limitedQuery = orderedQuery.limit(_limit);
+
+    if (!reset && _offset > 0) {
+      limitedQuery = limitedQuery.range(_offset, _offset + _limit - 1);
     }
 
-    // Apply sorting and limiting to get a PostgrestTransformBuilder
-    PostgrestTransformBuilder<PostgrestList> transformedQuery =
-        filterBuilder.order(_sortField, ascending: _isAscending).limit(_limit);
+    final response = await limitedQuery;
+    final newOrders = List<Map<String, dynamic>>.from(response);
 
     if (reset) {
-      _orders.clear();
-      _lastDocument = null;
+      _orders = newOrders;
+      _offset = 0;
       _hasMore = true;
+    } else {
+      _orders.addAll(newOrders);
+      _offset += _limit;
     }
 
-    final response = await transformedQuery;
-    if (response.isNotEmpty) {
-      _orders.addAll((response as List).cast<Map<String, dynamic>>());
-      _lastDocument = _orders.last;
-    } else {
+    if (newOrders.length < _limit) {
       _hasMore = false;
     }
+
     setState(() => _isLoading = false);
   }
 
   void _changeStatus(Map<String, dynamic> order, String newStatus) async {
     await _supabase
         .from('orders')
-        .update({'status': newStatus}).eq('orderId', order['orderId']);
+        .update({'status': newStatus}).eq('order_id', order['order_id']);
 
     // Fetch the updated document from Supabase
     final response = await _supabase
         .from('orders')
-        .select()
-        .eq('orderId', order['orderId'])
+        .select('*')
+        .eq('order_id', order['order_id'])
         .single();
 
-    final index = _orders.indexOf(order);
-    if (index != -1) {
-      List<Map<String, dynamic>> newOrders =
-          List<Map<String, dynamic>>.from(_orders);
-      newOrders[index] = response;
+    final updatedOrder = Map<String, dynamic>.from(response);
 
+    final index = _orders.indexWhere((o) => o['order_id'] == order['order_id']);
+    if (index != -1) {
       setState(() {
-        _orders = newOrders;
+        _orders[index] = updatedOrder;
       });
     }
-      _fetchSummary();
+    _fetchSummary();
   }
 
   Widget _buildFilterControls() {
@@ -198,9 +203,9 @@ class _OrdersPanelState extends State<OrdersPanel> {
 
   Widget _buildOrderRow(Map<String, dynamic> order) {
     return ListTile(
-      title: Text('${order['userName']} (${order['userPhone']})'),
+      title: Text('${order['user_name']} (${order['user_phone']})'),
       subtitle: Text(
-        '${order['orderId']}\n৳${(order['grandTotal'] as num?)?.toDouble() ?? 0.0} - ${order['status']} - ${order['paymentStatus']}\n${DateFormat.yMd().add_jm().format(DateTime.parse(order['placedAt']))}',
+        '${order['order_id']}\n৳${order['grand_total']} - ${order['status']} - ${order['payment_status']}\n${DateFormat.yMd().add_jm().format(DateTime.parse(order['placed_at']))}',
       ),
       trailing: DropdownButton<String>(
         value: order['status'],
@@ -247,7 +252,7 @@ class _OrdersPanelState extends State<OrdersPanel> {
           SizedBox(height: 8),
           _buildFilterControls(),
           Divider(),
-          _buildSortHeader('placedAt', 'Date'),
+          _buildSortHeader('placed_at', 'Date'),
           Expanded(
             child: ListView.builder(
               itemCount: _orders.length,

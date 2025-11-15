@@ -1,13 +1,13 @@
-// File: lib/madmin/screens/category_form_screen.dart
-
+// File: lib/screens/category_form_screen.dart
 import 'package:amar_uddokta/madmin/models/category_model.dart';
-import 'package:amar_uddokta/madmin/services/firestore_service.dart';
+import 'package:amar_uddokta/madmin/services/supabase_service.dart';
 import 'package:flutter/material.dart';
+import 'package:uuid/uuid.dart'; // UUID প্যাকেজ ইমপোর্ট করুন
 
 class CategoryFormScreen extends StatefulWidget {
   final ProductCategory? category;
 
-  const CategoryFormScreen({super.key, this.category});
+  const CategoryFormScreen({Key? key, this.category}) : super(key: key);
 
   @override
   State<CategoryFormScreen> createState() => _CategoryFormScreenState();
@@ -19,14 +19,14 @@ class _CategoryFormScreenState extends State<CategoryFormScreen> {
   final TextEditingController _iconController = TextEditingController();
   final TextEditingController _orderController = TextEditingController();
   bool _isActive = true;
-  final FirestoreService _firestoreService = FirestoreService();
+  final SupabaseService _supabaseService = SupabaseService();
 
   @override
   void initState() {
     super.initState();
     if (widget.category != null) {
-      _nameController.text = widget.category!.categoriesName;
-      _iconController.text = widget.category!.categoriesIcon;
+      _nameController.text = widget.category!.name;
+      _iconController.text = widget.category!.icon;
       _orderController.text = widget.category!.order.toString();
       _isActive = widget.category!.isActive;
     }
@@ -42,59 +42,31 @@ class _CategoryFormScreenState extends State<CategoryFormScreen> {
 
   Future<void> _saveCategory() async {
     if (_formKey.currentState!.validate()) {
-      // লোডিং ইন্ডিকেটর দেখানোর জন্য একটি ডায়ালগ খুলুন (ঐচ্ছিক)
-      // showDialog(context: context, barrierDismissible: false, builder: (context) => const Center(child: CircularProgressIndicator()));
+      final String name = _nameController.text;
+      final String icon = _iconController.text;
+      final int order = int.tryParse(_orderController.text) ?? 0;
 
-      try {
-        final String name = _nameController.text;
-        final String icon = _iconController.text;
-        final int order = int.tryParse(_orderController.text) ?? 0;
-
-        if (widget.category == null) {
-          // নতুন ক্যাটাগরি যোগ করা হচ্ছে
-          final newCategory = ProductCategory(
-            // গুরুত্বপূর্ণ: id এবং timestamps null রাখুন
-            id: null, 
-            categoriesName: name,
-            categoriesIcon: icon,
-            isActive: _isActive,
-            order: order,
-          );
-          await _firestoreService.addCategory(newCategory);
-        } else {
-          // বিদ্যমান ক্যাটাগরি আপডেট করা হচ্ছে
-          final updatedCategory = widget.category!.copyWith(
-            categoriesName: name,
-            categoriesIcon: icon,
-            isActive: _isActive,
-            order: order,
-          );
-          await _firestoreService.updateCategory(updatedCategory);
-        }
-        
-        // নিশ্চিত করুন যে উইজেটটি এখনও স্ক্রিনে আছে
-        if (mounted) {
-          Navigator.of(context).pop(); // ফর্ম স্ক্রিন বন্ধ করুন
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(widget.category == null ? 'ক্যাটাগরি সফলভাবে যোগ করা হয়েছে' : 'ক্যাটাগরি সফলভাবে আপডেট করা হয়েছে'),
-              backgroundColor: Colors.green,
-            ),
-          );
-        }
-      } catch (e) {
-        // যেকোনো এরর হ্যান্ডেল করুন
-        print('Error saving category: $e');
-        if (mounted) {
-          Navigator.of(context).pop(); // লোডিং ডায়ালগ থাকলে তা বন্ধ করুন
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('সমস্যা হয়েছে: $e'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
+      if (widget.category == null) {
+        // Add new category
+        final newCategory = ProductCategory(
+          id: const Uuid().v4(), // UUID তৈরি করুন
+          name: name,
+          icon: icon,
+          isActive: _isActive,
+          order: order,
+        );
+        await _supabaseService.addCategory(newCategory);
+      } else {
+        // Update existing category
+        final updatedCategory = widget.category!.copyWith(
+          name: name,
+          icon: icon,
+          isActive: _isActive,
+          order: order,
+        );
+        await _supabaseService.updateCategory(updatedCategory);
       }
+      Navigator.of(context).pop();
     }
   }
 
@@ -102,7 +74,7 @@ class _CategoryFormScreenState extends State<CategoryFormScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.category == null ? 'নতুন ক্যাটাগরি যোগ করুন' : 'ক্যাটাগরি সম্পাদনা করুন'),
+        title: Text(widget.category == null ? 'Add Category' : 'Edit Category'),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -112,10 +84,10 @@ class _CategoryFormScreenState extends State<CategoryFormScreen> {
             children: [
               TextFormField(
                 controller: _nameController,
-                decoration: const InputDecoration(labelText: 'ক্যাটাগরির নাম'),
+                decoration: const InputDecoration(labelText: 'Category Name'),
                 validator: (value) {
                   if (value == null || value.isEmpty) {
-                    return 'অনুগ্রহ করে একটি ক্যাটাগরির নাম লিখুন';
+                    return 'Please enter a category name';
                   }
                   return null;
                 },
@@ -123,10 +95,10 @@ class _CategoryFormScreenState extends State<CategoryFormScreen> {
               const SizedBox(height: 10),
               TextFormField(
                 controller: _iconController,
-                decoration: const InputDecoration(labelText: 'আইকন (ইমোজি)'),
+                decoration: const InputDecoration(labelText: 'Emoji'),
                 validator: (value) {
                   if (value == null || value.isEmpty) {
-                    return 'অনুগ্রহ করে একটি ইমোজি দিন';
+                    return 'Please enter an emoji';
                   }
                   return null;
                 },
@@ -134,14 +106,14 @@ class _CategoryFormScreenState extends State<CategoryFormScreen> {
               const SizedBox(height: 10),
               TextFormField(
                 controller: _orderController,
-                decoration: const InputDecoration(labelText: 'ক্রম (সংখ্যা)'),
+                decoration: const InputDecoration(labelText: 'Order (Number)'),
                 keyboardType: TextInputType.number,
                 validator: (value) {
                   if (value == null || value.isEmpty) {
-                    return 'অনুগ্রহ করে একটি ক্রম সংখ্যা দিন';
+                    return 'Please enter an order number';
                   }
                   if (int.tryParse(value) == null) {
-                    return 'অনুগ্রহ করে একটি বৈধ সংখ্যা দিন';
+                    return 'Please enter a valid number';
                   }
                   return null;
                 },
@@ -149,7 +121,7 @@ class _CategoryFormScreenState extends State<CategoryFormScreen> {
               const SizedBox(height: 10),
               Row(
                 children: [
-                  const Text('সক্রিয়:'),
+                  const Text('Is Active:'),
                   Switch(
                     value: _isActive,
                     onChanged: (value) {
@@ -163,7 +135,7 @@ class _CategoryFormScreenState extends State<CategoryFormScreen> {
               const SizedBox(height: 20),
               ElevatedButton(
                 onPressed: _saveCategory,
-                child: Text(widget.category == null ? 'যোগ করুন' : 'আপডেট করুন'),
+                child: Text(widget.category == null ? 'Add' : 'Update'),
               ),
             ],
           ),

@@ -1,17 +1,18 @@
+// File: lib/screens/category_admin_screen.dart
 import 'package:amar_uddokta/madmin/models/category_model.dart';
 import 'package:amar_uddokta/madmin/screens/category_form_screen.dart';
-import 'package:amar_uddokta/madmin/services/firestore_service.dart'; // This service now uses Supabase
+import 'package:amar_uddokta/madmin/services/supabase_service.dart';
 import 'package:flutter/material.dart';
 
 class CategoryAdminScreen extends StatefulWidget {
-  const CategoryAdminScreen({super.key});
+  const CategoryAdminScreen({Key? key}) : super(key: key);
 
   @override
   State<CategoryAdminScreen> createState() => _CategoryAdminScreenState();
 }
 
 class _CategoryAdminScreenState extends State<CategoryAdminScreen> {
-  final FirestoreService _firestoreService = FirestoreService();
+  final SupabaseService _supabaseService = SupabaseService();
 
   @override
   Widget build(BuildContext context) {
@@ -32,7 +33,7 @@ class _CategoryAdminScreenState extends State<CategoryAdminScreen> {
         ],
       ),
       body: StreamBuilder<List<ProductCategory>>(
-        stream: _firestoreService.getCategories(),
+        stream: _supabaseService.getCategories(),
         builder: (context, snapshot) {
           if (snapshot.hasError) {
             return Center(child: Text('Error: ${snapshot.error}'));
@@ -55,24 +56,24 @@ class _CategoryAdminScreenState extends State<CategoryAdminScreen> {
               return Card(
                 margin: const EdgeInsets.all(8.0),
                 child: ListTile(
-                  leading: category.categoriesIcon.isNotEmpty
+                  leading: category.icon.isNotEmpty
                       ? Text(
-                          category.categoriesIcon,
+                          category.icon,
                           style: const TextStyle(fontSize: 30),
                         )
                       : const Icon(Icons.category),
-                  title: Text(category.categoriesName),
+                  title: Text(category.name),
                   subtitle: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text('Order: ${category.order}'),
                       Text('Active: ${category.isActive ? 'Yes' : 'No'}'),
-                      if (category.adminCreatedAt != null)
+                      if (category.createdAt != null)
                         Text(
-                            'Created: ${category.adminCreatedAt!.toLocal().toString().split('.')[0]}'),
-                      if (category.adminUpdatedAt != null)
+                            'Created: ${category.createdAt!.toLocal().toString().split('.')[0]}'),
+                      if (category.updatedAt != null)
                         Text(
-                            'Updated: ${category.adminUpdatedAt!.toLocal().toString().split('.')[0]}'),
+                            'Updated: ${category.updatedAt!.toLocal().toString().split('.')[0]}'),
                     ],
                   ),
                   trailing: Row(
@@ -98,7 +99,7 @@ class _CategoryAdminScreenState extends State<CategoryAdminScreen> {
                               return AlertDialog(
                                 title: const Text('Confirm Deletion'),
                                 content: Text(
-                                    'Are you sure you want to delete category "${category.categoriesName}"?'),
+                                    'Are you sure you want to delete category "${category.name}"?'),
                                 actions: <Widget>[
                                   TextButton(
                                     onPressed: () =>
@@ -116,16 +117,7 @@ class _CategoryAdminScreenState extends State<CategoryAdminScreen> {
                           );
 
                           if (confirmDelete == true) {
-                            if (category.id != null) {
-                              await _firestoreService
-                                  .deleteCategory(category.id!);
-                            } else {
-                              // Handle case where category.id is null, perhaps show an error
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                    content: Text('Category ID is missing!')),
-                              );
-                            }
+                            await _supabaseService.deleteCategory(category.id);
                           }
                         },
                       ),

@@ -1,20 +1,19 @@
 import 'dart:io';
-import 'package:amar_uddokta/uddoktaa/widgets/label_service.dart';
+import 'package:amar_uddokta/madmin/services/LabelService.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:universal_html/html.dart' as html;
-import 'package:amar_uddokta/uddoktaa/models/order_model.dart';
-import 'package:amar_uddokta/uddoktaa/services/location_service.dart';
-import 'package:amar_uddokta/uddoktaa/utils/font_helper.dart'; // Import FontHelper
+import 'package:amar_uddokta/madmin/models/order_model.dart';
+import 'package:amar_uddokta/madmin/services/location_service.dart';
+import 'package:amar_uddokta/madmin/utils/font_helper.dart'; // Import FontHelper
 // Import UnicodeToBijoyConverter
-import 'package:amar_uddokta/uddoktaa/utils/mixed_text_renderer.dart';
-
+import 'package:amar_uddokta/madmin/utils/mixed_text_renderer.dart';
 import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:get/get.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:amar_uddokta/uddoktaa/controllers/OrderController.dart';
+import 'package:amar_uddokta/madmin/controller/OrderController.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
@@ -261,17 +260,17 @@ class _OrderCardState extends State<OrderCard> {
                   : null,
               title: Text('${item['name']} (${item['unit']})'),
               subtitle: Text(
-                  '${item['company']} | ${labelService.getLabel('quantity') ?? 'Qty'}: ${item['quantity']} | ${labelService.getLabel('price') ?? 'Unit Price'}: ৳${item['price']}'),
-              trailing: Text('৳${item['total']}'),
+                  '${item['company']} | ${labelService.getLabel('quantity') ?? 'Qty'}: ${item['quantity']} | ${labelService.getLabel('price') ?? 'Unit Price'}: ${item['price']}'),
+              trailing: Text('${item['total']}'),
             );
           }),
           const Divider(),
           Text(
-              '${labelService.getLabel('deliveryCharge') ?? 'Delivery Charge'}: ৳${widget.order.deliveryCharge}'),
+              '৳${labelService.getLabel('deliveryCharge') ?? 'Delivery Charge'}: ${widget.order.deliveryCharge}'),
           Text(
-              '${labelService.getLabel('total') ?? 'Total'}: ৳${widget.order.total}'),
+              '৳${labelService.getLabel('total') ?? 'Total'}: ${widget.order.total}'),
           Text(
-              '${labelService.getLabel('grandTotal') ?? 'Grand Total'}: ৳${widget.order.grandTotal}',
+              '৳${labelService.getLabel('grandTotal') ?? 'Grand Total'}: ${widget.order.grandTotal}',
               style: const TextStyle(fontWeight: FontWeight.bold)),
         ],
       ),
@@ -462,7 +461,7 @@ class _OrderCardState extends State<OrderCard> {
                   englishFont: englishFont,
                 ),
                 MixedTextRenderer.render(
-                  '${labelService.getLabel('status') ?? 'Status'}: ${widget.order.getStatusText(labelService)}',
+                  '${labelService.getLabel('status') ?? 'Status'}: ${labelService.getLabel(widget.order.status) ?? widget.order.status}',
                   bengaliFont: bengaliFont,
                   englishFont: englishFont,
                 ),
@@ -808,7 +807,7 @@ class _OrderCardState extends State<OrderCard> {
                           pw.Padding(
                             padding: const pw.EdgeInsets.all(5),
                             child: MixedTextRenderer.render(
-                              '${labelService.getLabel('quantity') ?? 'Qty'}: ${item['quantity']} | ৳${item['price']}',
+                              '${labelService.getLabel('quantity') ?? 'Qty'}: ${item['quantity']} | ${item['price']}',
                               bengaliFont: bengaliFont,
                               englishFont: englishFont,
                             ),
@@ -816,7 +815,7 @@ class _OrderCardState extends State<OrderCard> {
                           pw.Padding(
                             padding: const pw.EdgeInsets.all(5),
                             child: MixedTextRenderer.render(
-                              '${item['total']}',
+                              '৳${item['total']}',
                               style: pw.TextStyle(
                                 fontWeight: pw.FontWeight.bold,
                               ),
@@ -880,7 +879,7 @@ class _OrderCardState extends State<OrderCard> {
                       englishFont: englishFont,
                     ),
                     MixedTextRenderer.render(
-                      '${widget.order.deliveryCharge}',
+                      '৳${widget.order.deliveryCharge}',
                       bengaliFont: bengaliFont,
                       englishFont: englishFont,
                     ),
@@ -900,7 +899,7 @@ class _OrderCardState extends State<OrderCard> {
                       englishFont: englishBoldFont,
                     ),
                     MixedTextRenderer.render(
-                      '${widget.order.grandTotal}',
+                      '৳${widget.order.grandTotal}',
                       style: pw.TextStyle(
                         fontWeight: pw.FontWeight.bold,
                         fontSize: 18,

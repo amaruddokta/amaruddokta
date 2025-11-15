@@ -1,4 +1,5 @@
 // ignore_for_file: unnecessary_cast, unused_field
+import 'package:amar_uddokta/madmin/services/supabase_service.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -8,13 +9,11 @@ import 'package:amar_uddokta/uddoktaa/screens/cart_screen.dart';
 import 'package:amar_uddokta/uddoktaa/widgets/banner_slider.dart';
 // Corrected import path
 import 'package:amar_uddokta/uddoktaa/widgets/custom_drawer.dart';
-import 'package:amar_uddokta/uddoktaa/widgets/video_list_section.dart';
+
 import 'package:amar_uddokta/uddoktaa/widgets/bottom_icon.dart';
 import 'package:amar_uddokta/uddoktaa/utils/call_helper.dart';
-import 'package:amar_uddokta/madmin/services/firestore_service.dart'; // Import FirestoreService
+// Import FirestoreService
 import 'package:amar_uddokta/madmin/models/category_model.dart'; // Import ProductCategory
-
-import 'package:amar_uddokta/uddoktaa/controllers/package_controller.dart';
 
 import 'package:amar_uddokta/uddoktaa/screens/favorite_screen.dart';
 import 'package:amar_uddokta/uddoktaa/widgets/all_items_list.dart';
@@ -40,13 +39,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   bool _isSearching = false;
   bool _showContactOptions = false;
   String searchQuery = '';
-  final PackageController packageController = Get.put(PackageController());
+
   final ScrollController _scrollController = ScrollController();
   bool _showBackToTopButton = false;
 
   // Cache for categories and offers
-  final FirestoreService _firestoreService =
-      FirestoreService(); // Initialize FirestoreService
+  final SupabaseService _supabaseService =
+      SupabaseService(); // Initialize SupabaseService
   final List<ProductCategory> _cachedCategories =
       []; // Change type to ProductCategory
   List<Map<String, dynamic>> _cachedOffers = [];
@@ -78,13 +77,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   void _setupCategoriesStream() {
     _categoriesStream =
-        _firestoreService.getCategories(); // Use the service to get categories
+        _supabaseService.getCategories(); // Use the service to get categories
   }
 
   Future<void> _onRefresh() async {
     // Re-fetch offers and packages, categories will update via stream
     await _loadOffers();
-    packageController.fetchPackages();
 
     // Add a small animation when refreshing
     _animationController.reset();
@@ -473,7 +471,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                       builder: (_) =>
                                                           SubItemScreen(
                                                         categoryName: category
-                                                            .categoriesName, // Use model property
+                                                            .name, // Use model property
                                                       ),
                                                     ),
                                                   );
@@ -511,7 +509,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                   child: Center(
                                                     child: Text(
                                                       category
-                                                          .categoriesIcon, // Use model property
+                                                          .icon, // Use model property
                                                       style: TextStyle(
                                                           fontSize:
                                                               categoryItemSize *
@@ -525,7 +523,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                 width: categoryItemSize,
                                                 child: Text(
                                                   category
-                                                      .categoriesName, // Use model property
+                                                      .name, // Use model property
                                                   style: TextStyle(
                                                     fontSize:
                                                         screenWidth * 0.03,
@@ -550,146 +548,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         ),
                       ),
                       const SizedBox(height: 8),
-                      // Banner Slider with enhanced design
-                      Container(
-                        margin: const EdgeInsets.symmetric(horizontal: 0),
-                        height: bannerHeight,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Obx(() {
-                          if (packageController.packages.isEmpty) {
-                            return const Padding(
-                              padding: EdgeInsets.all(5.0),
-                              child: Center(
-                                child: CircularProgressIndicator(
-                                  color: Colors.green,
-                                ),
-                              ),
-                            );
-                          }
-                          return ClipRRect(
-                            borderRadius: BorderRadius.circular(10),
-                            child: BannerSlider(
-                                packages: packageController.packages),
-                          );
-                        }),
-                      ),
-                      const SizedBox(height: 0),
 
-                      // Offer Widgets with enhanced design
-                      Container(
-                        margin: const EdgeInsets.symmetric(horizontal: 16),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(15),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.05),
-                              blurRadius: 5,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        // child: OfferWidgets(),
-                      ),
-
-                      const SizedBox(height: 0),
-                      // Offers List - Enhanced design
-                      // Only show if there are offers
-                      if (hasOffers)
-                        Container(
-                          margin: const EdgeInsets.symmetric(horizontal: 12),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(15),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.05),
-                                blurRadius: 5,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          child: _isLoadingOffers
-                              ? SizedBox(
-                                  height: offerItemHeight,
-                                  child: const Center(
-                                    child: CircularProgressIndicator(
-                                        color: Colors.green),
-                                  ),
-                                )
-                              : SizedBox(
-                                  height: offerItemHeight,
-                                  child: ListView.builder(
-                                    scrollDirection: Axis.horizontal,
-                                    padding: const EdgeInsets.all(8),
-                                    itemCount: _cachedOffers.length,
-                                    itemBuilder: (context, index) {
-                                      final offer = _cachedOffers[index];
-                                      final endTimeString =
-                                          offer['endTime'] as String?;
-                                      int remainingMinutes = 0;
-                                      if (endTimeString != null) {
-                                        final now = DateTime.now();
-                                        final endDateTime =
-                                            DateTime.parse(endTimeString);
-                                        final difference =
-                                            endDateTime.difference(now);
-                                        remainingMinutes = difference.inMinutes;
-                                      }
-                                      return AnimationConfiguration
-                                          .staggeredList(
-                                        position: index,
-                                        duration:
-                                            const Duration(milliseconds: 375),
-                                        child: SlideAnimation(
-                                          horizontalOffset: 50.0,
-                                          child: FadeInAnimation(
-                                            child: Padding(
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                      horizontal: 8.0),
-                                              child: SizedBox(
-                                                width: offerItemWidth,
-                                                height: offerItemHeight,
-                                                child: OfferWidget(
-                                                  offer: offer,
-                                                  remainingMinutes:
-                                                      remainingMinutes,
-                                                  onTap: () {
-                                                    Get.to(() =>
-                                                        RealTimeOfferScreen(
-                                                            offer: offer));
-                                                  },
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                      );
-                                    },
-                                  ),
-                                ),
-                        ),
                       const SizedBox(height: 8),
                       // Video List Section (from user_panel) with enhanced design
-                      Container(
-                        margin: const EdgeInsets.symmetric(horizontal: 0),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(15),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.05),
-                              blurRadius: 5,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: const VideoListSection(),
-                      ),
-                      const SizedBox(height: 16),
+
                       // All Items List with enhanced design
                       Container(
                         margin: const EdgeInsets.symmetric(horizontal: 0),

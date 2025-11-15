@@ -1,4 +1,5 @@
 // ignore_for_file: unused_local_variable, unnecessary_string_escapes
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -89,13 +90,13 @@ class _CartScreenState extends State<CartScreen> {
     if (user != null) {
       try {
         // চেক করা হচ্ছে বর্তমান ইউজার উদ্যোক্তা কিনা
-        final response = await Supabase.instance.client
+        final uddoktaDoc = await Supabase.instance.client
             .from('u-users')
             .select()
             .eq('id', user.id)
-            .single();
+            .maybeSingle();
 
-        _isUddokta.value = response != null;
+        _isUddokta.value = uddoktaDoc != null;
       } catch (e) {
         print('Error checking user type: $e');
       }
@@ -112,13 +113,15 @@ class _CartScreenState extends State<CartScreen> {
     if (user != null && !_isUddokta.value) {
       // শুধুমাত্র সাধারণ ইউজারদের জন্য ডাটা লোড করা হবে
       debugPrint('CartScreen _loadUserData: User is logged in: ${user.id}');
-      final response = await Supabase.instance.client
+      final userDoc = await Supabase.instance.client
           .from('users')
           .select()
           .eq('id', user.id)
-          .single();
+          .maybeSingle();
+      debugPrint(
+          'CartScreen _loadUserData: userDoc exists: ${userDoc != null}');
 
-      final data = response ?? {};
+      final data = userDoc ?? {};
       userData.value =
           data; // userData will be empty map if userDoc doesn't exist
 
@@ -154,12 +157,16 @@ class _CartScreenState extends State<CartScreen> {
 
     final user = Supabase.instance.client.auth.currentUser;
     if (user != null) {
-      final response = await Supabase.instance.client
+      final userDoc = await Supabase.instance.client
           .from('users')
           .select('referBalance')
           .eq('id', user.id)
-          .single();
-      final data = response;
+          .maybeSingle();
+      if (userDoc == null) {
+        _userReferBalance.value = 0.0;
+        return;
+      }
+      final data = userDoc;
       final dynamic balance = data['referBalance'];
       if (balance is String) {
         _userReferBalance.value = double.tryParse(balance) ?? 0.0;
@@ -201,14 +208,6 @@ class _CartScreenState extends State<CartScreen> {
       return;
     }
 
-    final refererData = response.first;
-    if (refererData['isReferralActive'] == false) {
-      _isReferCodeValid.value = false;
-      Get.snackbar('ত্রুটি', 'এই রেফারেল কোডটি বর্তমানে সক্রিয় নেই',
-          snackPosition: SnackPosition.BOTTOM);
-      return;
-    }
-
     final currentUser = Supabase.instance.client.auth.currentUser;
     if (currentUser != null && response.first['id'] == currentUser.id) {
       _isReferCodeValid.value = false;
@@ -225,23 +224,14 @@ class _CartScreenState extends State<CartScreen> {
     });
 
     double bonus = 0.0;
-    final settingsResponse = await Supabase.instance.client
-        .from('referral_settings')
-        .select()
-        .eq('id', 'bonus_rules')
-        .single();
-
-    final settingsData = settingsResponse;
-    if (settingsData['tiers'] is List) {
-      final tiers = List<Map<String, dynamic>>.from(settingsData['tiers']);
-      for (var tier in tiers) {
-        final minAmount = (tier['minAmount'] as num).toDouble();
-        final maxAmount = (tier['maxAmount'] as num).toDouble();
-        if (total >= minAmount && total < maxAmount) {
-          bonus = (tier['bonus'] as num).toDouble();
-          break;
-        }
-      }
+    if (total >= 400 && total < 500) {
+      bonus = 5.0;
+    } else if (total >= 500 && total < 1000) {
+      bonus = 7.0;
+    } else if (total >= 1000 && total < 2000) {
+      bonus = 9.0;
+    } else if (total >= 2000) {
+      bonus = 11.0;
     }
 
     if (bonus > 0) {
@@ -293,39 +283,29 @@ class _CartScreenState extends State<CartScreen> {
     }
 
     try {
+      dynamic response;
       if (upazila != null && upazila.isNotEmpty) {
-        final response = await Supabase.instance.client
+        response = await Supabase.instance.client
             .from('delivery_fees')
             .select()
-            .eq('admin_Division', division)
-            .eq('admin_District', district)
-            .eq('admin_Upazila', upazila)
+            .eq('division', division)
+            .eq('district', district)
+            .eq('upazila', upazila)
             .maybeSingle();
         if (response != null) {
           return _calculateFeeFromRule(response, totalWeight);
         }
       }
 
-      final response = await Supabase.instance.client
+      response = await Supabase.instance.client
           .from('delivery_fees')
           .select()
-          .eq('admin_Division', division)
-          .eq('admin_District', district)
-          .filter('admin_Upazila', 'is', null)
+          .eq('division', division)
+          .eq('district', 'is.null')
+          .eq('upazila', 'is.null')
           .maybeSingle();
       if (response != null) {
         return _calculateFeeFromRule(response, totalWeight);
-      }
-
-      final response2 = await Supabase.instance.client
-          .from('delivery_fees')
-          .select()
-          .eq('admin_Division', division)
-          .filter('admin_District', 'is', null)
-          .filter('admin_Upazila', 'is', null)
-          .maybeSingle();
-      if (response2 != null) {
-        return _calculateFeeFromRule(response2, totalWeight);
       }
 
       return 30.0;
@@ -337,7 +317,7 @@ class _CartScreenState extends State<CartScreen> {
 
   double _calculateFeeFromRule(Map<String, dynamic> rule, double totalWeight) {
     final baseWeight = (rule['baseWeightKg'] ?? 1.0).toDouble();
-    final baseFee = (rule['admin_fees'] ?? 30.0).toDouble();
+    final baseFee = (rule['baseFee'] ?? 30.0).toDouble();
     final feePerExtraKg = (rule['feePerExtraKg'] ?? 10.0).toDouble();
 
     if (totalWeight <= baseWeight) {
@@ -368,12 +348,13 @@ class _CartScreenState extends State<CartScreen> {
 
     final user = Supabase.instance.client.auth.currentUser;
     if (user != null) {
-      final response = await Supabase.instance.client
+      final userDoc = await Supabase.instance.client
           .from('users')
           .select('referBalance')
           .eq('id', user.id)
-          .single();
-      final data = response;
+          .maybeSingle();
+      if (userDoc == null) return;
+      final data = userDoc;
       final dynamic balance = data['referBalance'];
       double currentBalance = 0.0;
       if (balance is String) {
@@ -398,8 +379,9 @@ class _CartScreenState extends State<CartScreen> {
     }
 
     final user = Supabase.instance.client.auth.currentUser;
+    // This check is now handled by the caller.
     if (user == null) {
-      Get.to(() => dokane.RegistrationScreen(fromCart: true));
+      print("Error: _placeOrder called without a logged-in user.");
       return;
     }
 
@@ -511,57 +493,74 @@ class _CartScreenState extends State<CartScreen> {
       return;
     }
 
-    final items = cartController.cartItems;
-    final total = items.fold<double>(0, (sum, item) {
-      final discountedPrice =
-          item.price * (100 - item.discountPercentage) / 100;
-      return sum + (discountedPrice * item.quantity);
-    });
-
-    String? division;
-    String? district;
-    String? upazila;
-    if (useNewAddress) {
-      division = _selectedDivision.value;
-      district = _selectedDistrict.value;
-      upazila = _selectedUpazila.value;
-    } else if (userData.value.isNotEmpty) {
-      division = userData.value['division'];
-      district = userData.value['district'];
-      upazila = userData.value['upazila'];
-    }
-    final totalWeight = cartController.cartItems.fold<double>(
-        0, (sum, item) => sum + ((item.weightInKg ?? 0.0) * item.quantity));
-    final calculatedDeliveryFee =
-        await _getDeliveryFee(division, district, upazila, totalWeight);
-    final grandTotal = total + calculatedDeliveryFee;
-    String orderId = 'ORDER_${DateTime.now().millisecondsSinceEpoch}';
-    String amount = grandTotal.toStringAsFixed(0);
-    String paymentUrl = selectedPaymentMethod == 'Bkash'
-        ? 'https://valid-oven-461003-h0.web.app/bkash-checkout.html?amount=$amount&orderId=$orderId'
-        : 'https://valid-oven-461003-h0.web.app/nagad-checkout.html?amount=$amount&orderId=$orderId';
-    // After removing PaymentWebViewScreen, we need to decide how to handle online payments.
-    // For now, we'll assume online payments are not supported directly from here.
-    // The user will need to implement an alternative payment flow or remove online payment options.
-    Get.snackbar('পেমেন্ট পদ্ধতি অনুপলব্ধ',
-        'অনলাইন পেমেন্ট পদ্ধতি বর্তমানে উপলব্ধ নয়।');
+    Get.snackbar('দুঃখিত', 'অনলাইন পেমেন্ট শীঘ্রই আসছে।');
   }
 
-  // নতুন মেথড যোগ করা হল
+  // =================================================================
+  // === সম্পূর্ণ পরিবর্তিত ফাংশন: _handleOrderPlacement ===
+  // =================================================================
   Future<void> _handleOrderPlacement() async {
+    debugPrint('CartScreen: _handleOrderPlacement called');
+
     if (_isUddokta.value) {
       Get.snackbar('ত্রুটি', 'উদ্যোক্তা হিসেবে অর্ডার করা যাবে না',
           snackPosition: SnackPosition.BOTTOM);
       return;
     }
 
-    if (selectedPaymentMethod == 'Cash on Delivery') {
-      // ক্যাশ অন ডেলিভারির জন্য সরাসরি অর্ডার প্লেস করব
-      String orderId = 'ORDER_${DateTime.now().millisecondsSinceEpoch}';
-      await _placeOrder(orderId: orderId, paymentStatus: 'pending');
+    final user = Supabase.instance.client.auth.currentUser;
+    debugPrint('CartScreen: User is logged in: ${user != null}');
+
+    if (user == null) {
+      // User is not logged in, navigate to registration.
+      debugPrint(
+          'CartScreen: User not logged in. Navigating to registration screen.');
+
+      // Get.off ব্যবহার করা হচ্ছে যাতে ইউজার রেজিস্ট্রেশন শেষ না করে কার্ট স্ক্রিনে ফিরতে না পারে
+      Get.off(
+        () => dokane.RegistrationScreen(
+          fromCart: true,
+          onRegistrationComplete: (registrationData) async {
+            debugPrint(
+                'CartScreen: Registration complete with data: $registrationData');
+
+            // রেজিস্ট্রেশনের পর নতুন ডাটা দিয়ে স্ক্রিন আপডেট করুন
+            userData.value = registrationData;
+            _nameController.text = registrationData['name'] ?? '';
+            _phoneController.text = registrationData['phone'] ?? '';
+            _selectedDivision.value = registrationData['division'] ?? '';
+            _selectedDistrict.value = registrationData['district'] ?? '';
+            _selectedUpazila.value = registrationData['upazila'] ?? '';
+            _selectedUnion.value = registrationData['union'] ?? '';
+            _villageController.text = registrationData['village'] ?? '';
+            _wardController.text = registrationData['ward'] ?? '';
+            _houseController.text = registrationData['house'] ?? '';
+            _roadController.text = registrationData['road'] ?? '';
+            _updateDeliveryFee();
+            _loadUserReferBalance();
+
+            // এখন ইউজার রেজিস্টার্ড, তাই সরাসরি অর্ডার প্লেস করার চেষ্টা করুন
+            debugPrint(
+                'CartScreen: Proceeding with order placement after registration.');
+            if (selectedPaymentMethod == 'Cash on Delivery') {
+              String orderId = 'ORDER_${DateTime.now().millisecondsSinceEpoch}';
+              await _placeOrder(orderId: orderId, paymentStatus: 'pending');
+            } else {
+              await _startPaymentFlow();
+            }
+          },
+        ),
+      );
     } else {
-      // অনলাইন পেমেন্টের জন্য পেমেন্ট ফ্লো শুরু করব
-      await _startPaymentFlow();
+      // User is logged in, proceed with placing the order.
+      debugPrint(
+          'CartScreen: User is logged in, proceeding with order placement.');
+      if (selectedPaymentMethod == 'Cash on Delivery') {
+        String orderId = 'ORDER_${DateTime.now().millisecondsSinceEpoch}';
+        await _placeOrder(orderId: orderId, paymentStatus: 'pending');
+      } else {
+        await _startPaymentFlow();
+      }
     }
   }
 
@@ -894,72 +893,57 @@ class _CartScreenState extends State<CartScreen> {
       return Container(); // উদ্যোক্তাদের জন্য রেফার সেকশন দেখাবে না
     }
 
-    return StreamBuilder<Map<String, dynamic>?>(
-      stream: Supabase.instance.client
-          .from('referral_settings')
-          .stream(primaryKey: ['id'])
-          .eq('id', 'status')
-          .map((event) => event.isNotEmpty ? event.first : null),
-      builder: (context, snapshot) {
-        if (snapshot.hasData &&
-            snapshot.data != null &&
-            snapshot.data!['isEnabled'] == true) {
-          return Container(
-            margin: const EdgeInsets.only(top: 16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (!_useReferBalance.value) ...[
-                  const Text(
-                    'রেফারেল কোড',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  TextFormField(
-                    controller: _referCodeController,
-                    decoration: InputDecoration(
-                      hintText: 'রেফারেল কোড লিখুন...',
-                      border: OutlineInputBorder(
-                        borderSide: BorderSide(
-                          color: _isReferCodeValid.value
-                              ? Colors.grey
-                              : Colors.red,
-                        ),
-                      ),
-                      errorText:
-                          _isReferCodeValid.value ? null : 'অবৈধ রেফারেল কোড',
-                    ),
-                    onChanged: (value) {
-                      _isReferCodeValid.value = true;
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                ],
-                Row(
-                  children: [
-                    Checkbox(
-                      value: _useReferBalance.value,
-                      onChanged: (value) {
-                        _useReferBalance.value = value ?? false;
-                      },
-                    ),
-                    const Text('রেফারেল ব্যালেন্স ব্যবহার করুন'),
-                  ],
-                ),
-                if (_useReferBalance.value)
-                  Text(
-                    'আপনার রেফারেল ব্যালেন্স: ৳${_userReferBalance.value.toStringAsFixed(2)}',
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-              ],
+    return Container(
+      margin: const EdgeInsets.only(top: 16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (!_useReferBalance.value) ...[
+            const Text(
+              'রেফারেল কোড',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
             ),
-          );
-        }
-        return Container(); // Return an empty container if the referral system is disabled
-      },
+            const SizedBox(height: 8),
+            Obx(() => TextFormField(
+                  controller: _referCodeController,
+                  decoration: InputDecoration(
+                    hintText: 'রেফারেল কোড লিখুন...',
+                    border: OutlineInputBorder(
+                      borderSide: BorderSide(
+                        color:
+                            _isReferCodeValid.value ? Colors.grey : Colors.red,
+                      ),
+                    ),
+                    errorText:
+                        _isReferCodeValid.value ? null : 'অবৈধ রেফারেল কোড',
+                  ),
+                  onChanged: (value) {
+                    _isReferCodeValid.value = true;
+                  },
+                )),
+            const SizedBox(height: 16),
+          ],
+          Row(
+            children: [
+              Checkbox(
+                value: _useReferBalance.value,
+                onChanged: (value) {
+                  _useReferBalance.value = value ?? false;
+                },
+              ),
+              const Text('রেফারেল ব্যালেন্স ব্যবহার করুন'),
+            ],
+          ),
+          if (_useReferBalance.value)
+            Text(
+              'আপনার রেফারেল ব্যালেন্স: ৳${_userReferBalance.value.toStringAsFixed(2)}',
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+        ],
+      ),
     );
   }
 
@@ -1141,50 +1125,7 @@ class _CartScreenState extends State<CartScreen> {
             const SizedBox(height: 20),
             Center(
               child: ElevatedButton(
-                onPressed: () async {
-                  final user = Supabase.instance.client.auth.currentUser;
-                  if (user == null) {
-                    // লগইন না থাকলে রেজিস্ট্রেশন স্ক্রিনে নিয়ে যাব
-                    await Get.to(
-                      () => dokane.RegistrationScreen(
-                        fromCart: true,
-                        onRegistrationComplete: (registrationData) async {
-                          // রেজিস্ট্রেশন সফল হলে এই কলব্যাকটি কল হবে
-                          debugPrint(
-                              'CartScreen: Registration complete with data: $registrationData');
-                          // প্রাপ্ত ডেটা দিয়ে CartScreen এর স্টেট আপডেট করুন
-                          userData.value = registrationData;
-                          _nameController.text = registrationData['name'] ?? '';
-                          _phoneController.text =
-                              registrationData['phone'] ?? '';
-                          _selectedDivision.value =
-                              registrationData['division'] ?? '';
-                          _selectedDistrict.value =
-                              registrationData['district'] ?? '';
-                          _selectedUpazila.value =
-                              registrationData['upazila'] ?? '';
-                          _selectedUnion.value =
-                              registrationData['union'] ?? '';
-                          _villageController.text =
-                              registrationData['village'] ?? '';
-                          _wardController.text = registrationData['ward'] ?? '';
-                          _houseController.text =
-                              registrationData['house'] ?? '';
-                          _roadController.text = registrationData['road'] ?? '';
-
-                          // ডেলিভারি ফি আপডেট করুন
-                          _updateDeliveryFee();
-
-                          // অর্ডার প্লেস করার প্রক্রিয়া শুরু করুন
-                          await _handleOrderPlacement();
-                        },
-                      ),
-                    );
-                  } else {
-                    // লগইন আছে, সরাসরি অর্ডার প্লেস করার প্রক্রিয়া শুরু করব
-                    await _handleOrderPlacement();
-                  }
-                },
+                onPressed: _handleOrderPlacement,
                 child: const Text('অর্ডার করুন'),
               ),
             ),

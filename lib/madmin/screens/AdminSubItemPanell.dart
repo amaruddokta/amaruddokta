@@ -3,32 +3,23 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:path/path.dart' as path;
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:video_compress/video_compress.dart';
-import 'package:get/get.dart';
-import 'package:amar_uddokta/uddoktaa/widgets/background_container.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 class AdminSubItemPanel extends StatefulWidget {
-  final String categoryName;
-  final String searchQuery;
-
-  const AdminSubItemPanel({
-    super.key,
-    this.categoryName = '',
-    this.searchQuery = '',
-  });
+  const AdminSubItemPanel({Key? key}) : super(key: key);
 
   @override
   State<AdminSubItemPanel> createState() => _AdminSubItemPanelState();
 }
 
-class _AdminSubItemPanelState extends State<AdminSubItemPanel>
-    with TickerProviderStateMixin {
+class _AdminSubItemPanelState extends State<AdminSubItemPanel> {
   final SupabaseClient _supabase = Supabase.instance.client;
-  final String _bucketName = 'ponno';
+  final String _storagePath =
+      'subitem'; // The specified path in Supabase Storage
 
-  // Text controllers
+  // কন্ট্রোলার্স
   TextEditingController nameController = TextEditingController();
   TextEditingController subItemController = TextEditingController();
   TextEditingController unitController = TextEditingController();
@@ -43,110 +34,38 @@ class _AdminSubItemPanelState extends State<AdminSubItemPanel>
   TextEditingController imageUrlController = TextEditingController();
   TextEditingController videoUrlController = TextEditingController();
 
+  String selectedCategory = "সব ক্যাটাগরি";
   String selectedAddCategory = "";
   String imageUrl = '';
   String videoUrl = '';
   bool _isUploading = false;
-  bool _isExpanded = false;
 
+  // Size-related variables
   final List<Map<String, TextEditingController>> _sizePriceUnitList = [];
   bool _hasSizes = false;
 
-  late Future<List<Map<String, dynamic>>> _futureProducts;
-  late AnimationController _animationController;
-  late Animation<double> _fadeAnimation;
-  late AnimationController _fabAnimationController;
-
-  @override
-  void initState() {
-    super.initState();
-    _futureProducts = _fetchProducts();
-
-    // Initialize animations
-    _animationController = AnimationController(
-      duration: const Duration(milliseconds: 500),
-      vsync: this,
-    );
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _animationController, curve: Curves.easeIn),
-    );
-
-    _fabAnimationController = AnimationController(
-      duration: const Duration(milliseconds: 300),
-      vsync: this,
-    );
-
-    _animationController.forward();
-  }
-
-  @override
-  void didUpdateWidget(covariant AdminSubItemPanel oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.searchQuery != widget.searchQuery ||
-        oldWidget.categoryName != widget.categoryName) {
-      _futureProducts = _fetchProducts();
-      _animationController.reset();
-      _animationController.forward();
-    }
-  }
-
-  @override
-  void dispose() {
-    _animationController.dispose();
-    _fabAnimationController.dispose();
-    nameController.dispose();
-    subItemController.dispose();
-    unitController.dispose();
-    detailsController.dispose();
-    priceController.dispose();
-    discountController.dispose();
-    stockController.dispose();
-    companyController.dispose();
-    colorController.dispose();
-    sizeController.dispose();
-    searchController.dispose();
-    imageUrlController.dispose();
-    videoUrlController.dispose();
-    for (var entry in _sizePriceUnitList) {
-      entry['size']?.dispose();
-      entry['price']?.dispose();
-      entry['unit']?.dispose();
-    }
-    super.dispose();
-  }
-
-  Future<List<Map<String, dynamic>>> _fetchProducts() async {
+  // Supabase Storage-এ ফাইল আপলোড
+  Future<String?> uploadFileToSupabase(
+    Uint8List fileBytes,
+    String fileName,
+    String contentType,
+  ) async {
     try {
-      final response = await _supabase.from('ponno').select('''
-            *,
-            categories (
-              categories_name
-            )
-          ''');
-      final allProducts = List<Map<String, dynamic>>.from(response);
+      await _supabase.storage.from(_storagePath).uploadBinary(
+          fileName, fileBytes,
+          fileOptions: FileOptions(contentType: contentType));
 
-      final filteredProducts = allProducts.where((product) {
-        final matchesCategory = widget.categoryName.isEmpty ||
-            (product['categories']?['categories_name'] ?? '')
-                    .toString()
-                    .trim() ==
-                widget.categoryName.trim();
+      final publicUrl =
+          _supabase.storage.from(_storagePath).getPublicUrl(fileName);
 
-        final matchesSearch = (product['usernames'] ?? '')
-            .toString()
-            .toLowerCase()
-            .contains(widget.searchQuery.toLowerCase());
-
-        return matchesCategory && matchesSearch;
-      }).toList();
-
-      return filteredProducts;
+      return publicUrl;
     } catch (e) {
-      debugPrint('পণ্য লোড করতে সমস্যা: $e');
-      return [];
+      debugPrint('Supabase Storage Upload error: $e');
+      return null;
     }
   }
 
+  // Size-related methods
   void _addSizePriceUnitField({String? size, String? price, String? unit}) {
     setState(() {
       _sizePriceUnitList.add({
@@ -202,30 +121,7 @@ class _AdminSubItemPanelState extends State<AdminSubItemPanel>
     }
   }
 
-  Future<String?> _uploadFileToSupabase(
-    Uint8List fileBytes,
-    String fileName,
-    String fileExtension,
-    bool isVideo,
-  ) async {
-    try {
-      final String filePath = '$_bucketName/$fileName';
-      await _supabase.storage.from(_bucketName).uploadBinary(
-            filePath,
-            fileBytes,
-            fileOptions: FileOptions(
-              upsert: true,
-              contentType:
-                  isVideo ? 'video/$fileExtension' : 'image/$fileExtension',
-            ),
-          );
-      return _supabase.storage.from(_bucketName).getPublicUrl(filePath);
-    } catch (e) {
-      debugPrint('Supabase Storage Upload error: $e');
-      return null;
-    }
-  }
-
+  // ইমেজ পিক ও আপলোড
   Future<void> pickImage() async {
     try {
       final picker = ImagePicker();
@@ -233,6 +129,7 @@ class _AdminSubItemPanelState extends State<AdminSubItemPanel>
       if (pickedFile != null) {
         setState(() => _isUploading = true);
 
+        // Compress image
         final compressedBytes = await FlutterImageCompress.compressWithFile(
           pickedFile.path,
           minWidth: 1000,
@@ -241,40 +138,49 @@ class _AdminSubItemPanelState extends State<AdminSubItemPanel>
         );
 
         if (compressedBytes == null) {
-          _showCustomSnackBar('❌ ইমেজ কম্প্রেস ব্যর্থ হয়েছে', Colors.red);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('❌ ইমেজ কম্প্রেস ব্যর্থ হয়েছে')),
+          );
           return;
         }
 
-        String fileExtension =
-            path.extension(pickedFile.path).replaceAll('.', '');
-        if (fileExtension.isEmpty) fileExtension = 'jpg';
+        String fileExtension = path.extension(pickedFile.path);
+        if (fileExtension.isEmpty || fileExtension == '.') {
+          fileExtension = '.jpg';
+        }
         final fileName =
-            '${DateTime.now().millisecondsSinceEpoch}.$fileExtension';
-        final uploadedUrl = await _uploadFileToSupabase(
+            '${DateTime.now().millisecondsSinceEpoch}$fileExtension';
+        final uploadedUrl = await uploadFileToSupabase(
           Uint8List.fromList(compressedBytes),
           fileName,
-          fileExtension,
-          false,
+          'image/jpeg',
         );
 
         if (uploadedUrl != null) {
           setState(() {
             imageUrl = uploadedUrl;
-            imageUrlController.text = uploadedUrl;
+            imageUrlController.text = uploadedUrl; // Update controller
           });
-          _showCustomSnackBar('✅ ইমেজ সফলভাবে আপলোড হয়েছে', Colors.green);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('✅ ইমেজ সফলভাবে আপলোড হয়েছে')),
+          );
         } else {
-          _showCustomSnackBar('❌ ইমেজ আপলোড ব্যর্থ হয়েছে', Colors.red);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('❌ ইমেজ আপলোড ব্যর্থ হয়েছে')),
+          );
         }
       }
     } catch (e) {
       debugPrint('Image pick error: $e');
-      _showCustomSnackBar('❌ ত্রুটি: $e', Colors.red);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('❌ ত্রুটি: $e')));
     } finally {
       setState(() => _isUploading = false);
     }
   }
 
+  // ভিডিও পিক ও আপলোড
   Future<void> pickVideo() async {
     try {
       final result = await FilePicker.platform.pickFiles(type: FileType.video);
@@ -285,11 +191,14 @@ class _AdminSubItemPanelState extends State<AdminSubItemPanel>
         final String? filePath = file.path;
 
         if (filePath == null) {
-          _showCustomSnackBar('❌ ভিডিও ফাইল পাথ পাওয়া যায়নি', Colors.red);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('❌ ভিডিও ফাইল পাথ পাওয়া যায়নি')),
+          );
           return;
         }
 
-        final mediaInfo = await VideoCompress.compressVideo(
+        // Compress video
+        final MediaInfo? mediaInfo = await VideoCompress.compressVideo(
           filePath,
           quality: VideoQuality.MediumQuality,
           deleteOrigin: false,
@@ -297,40 +206,51 @@ class _AdminSubItemPanelState extends State<AdminSubItemPanel>
         );
 
         if (mediaInfo == null || mediaInfo.file == null) {
-          _showCustomSnackBar('❌ ভিডিও কম্প্রেস ব্যর্থ হয়েছে', Colors.red);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('❌ ভিডিও কম্প্রেস ব্যর্থ হয়েছে')),
+          );
           return;
         }
 
         final compressedVideoBytes = await mediaInfo.file!.readAsBytes();
-        String fileExtension = path.extension(file.name).replaceAll('.', '');
-        if (fileExtension.isEmpty) fileExtension = 'mp4';
+
+        String fileExtension = path.extension(file.name);
+        if (fileExtension.isEmpty || fileExtension == '.') {
+          fileExtension = '.mp4';
+        }
         final fileName =
-            '${DateTime.now().millisecondsSinceEpoch}.$fileExtension';
-        final uploadedUrl = await _uploadFileToSupabase(
+            '${DateTime.now().millisecondsSinceEpoch}$fileExtension';
+        final uploadedUrl = await uploadFileToSupabase(
           compressedVideoBytes,
           fileName,
-          fileExtension,
-          true,
+          'video/mp4',
         );
 
         if (uploadedUrl != null) {
           setState(() {
             videoUrl = uploadedUrl;
-            videoUrlController.text = uploadedUrl;
+            videoUrlController.text = uploadedUrl; // Update controller
           });
-          _showCustomSnackBar('✅ ভিডিও সফলভাবে আপলোড হয়েছে', Colors.green);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('✅ ভিডিও সফলভাবে আপলোড হয়েছে')),
+          );
         } else {
-          _showCustomSnackBar('❌ ভিডিও আপলোড ব্যর্থ হয়েছে', Colors.red);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('❌ ভিডিও আপলোড ব্যর্থ হয়েছে')),
+          );
         }
       }
     } catch (e) {
       debugPrint('Video pick error: $e');
-      _showCustomSnackBar('❌ ত্রুটি: $e', Colors.red);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('❌ ত্রুটি: $e')));
     } finally {
       setState(() => _isUploading = false);
     }
   }
 
+  // প্রোডাক্ট ডিলিট
   Future<void> deleteProduct(
     String docId,
     String? imageUrl,
@@ -339,62 +259,50 @@ class _AdminSubItemPanelState extends State<AdminSubItemPanel>
     try {
       setState(() => _isUploading = true);
 
-      Future<void> deleteFileFromStorage(String? url) async {
-        if (url != null && url.isNotEmpty) {
-          try {
-            final uri = Uri.parse(url);
-            final pathSegments = uri.pathSegments;
-            final bucketIndex = pathSegments.indexOf(_bucketName);
-            if (bucketIndex != -1 && bucketIndex < pathSegments.length - 1) {
-              final filePath = pathSegments.sublist(bucketIndex + 1).join('/');
-              await _supabase.storage.from(_bucketName).remove([filePath]);
-            }
-          } catch (e) {
-            debugPrint('Failed to delete file from storage: $e');
-          }
-        }
+      // Supabase Storage থেকে ফাইল ডিলিট
+      if (imageUrl != null && imageUrl.isNotEmpty) {
+        final fileName = imageUrl.split('/').last;
+        await _supabase.storage.from(_storagePath).remove([fileName]);
+      }
+      if (videoUrl != null && videoUrl.isNotEmpty) {
+        final fileName = videoUrl.split('/').last;
+        await _supabase.storage.from(_storagePath).remove([fileName]);
       }
 
-      await deleteFileFromStorage(imageUrl);
-      await deleteFileFromStorage(videoUrl);
+      // Supabase থেকে ডকুমেন্ট ডিলিট
+      await _supabase.from('products').delete().eq('id', docId);
 
-      await _supabase.from('ponno').delete().eq('id', docId);
-
-      _showCustomSnackBar('🗑️ প্রোডাক্ট ডিলিট করা হয়েছে', Colors.green);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('🗑️ প্রোডাক্ট ডিলিট করা হয়েছে')),
+      );
     } catch (e) {
-      _showCustomSnackBar('❌ ডিলিট করতে সমস্যা: $e', Colors.red);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('❌ ডিলিট করতে সমস্যা: $e')));
     } finally {
       setState(() => _isUploading = false);
     }
   }
 
-  void _showCustomSnackBar(String message, Color color) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: color,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
-      ),
-    );
-  }
-
+  // এডিট ডায়ালগ
   void showEditDialog(String docId, Map<String, dynamic> data) {
-    nameController.text = data['usernames'] ?? '';
-    subItemController.text = data['userItem'] ?? '';
-    detailsController.text = data['userdetailss'] ?? '';
-    discountController.text = (data['userdiscounts'] ?? '').toString();
-    stockController.text = (data['userstocks'] ?? '').toString();
-    companyController.text = data['userscompanys'] ?? '';
-    colorController.text = data['usercolors'] ?? '';
-    selectedAddCategory = data['UCategorys'] ?? '';
-    imageUrl = data['userimageUrls'] ?? '';
-    videoUrl = data['uservideoUrls'] ?? '';
-    imageUrlController.text = imageUrl;
-    videoUrlController.text = videoUrl;
+    nameController.text = data['name'] ?? '';
+    subItemController.text = data['subItemName'] ?? '';
+    unitController.text = data['unit'] ?? '';
+    detailsController.text = data['details'] ?? '';
+    priceController.text = (data['price'] ?? '').toString();
+    discountController.text = (data['discount'] ?? '').toString();
+    stockController.text = (data['stock'] ?? '').toString();
+    companyController.text = data['company'] ?? '';
+    colorController.text = data['color'] ?? '';
+    sizeController.text = data['size'] ?? '';
+    selectedAddCategory = data['category'] ?? '';
+    imageUrl = data['imageUrl'] ?? '';
+    videoUrl = data['videoUrl'] ?? '';
+    imageUrlController.text = imageUrl; // Initialize controller
+    videoUrlController.text = videoUrl; // Initialize controller
 
+    // Clear existing size fields
     for (var entry in _sizePriceUnitList) {
       entry['size']?.dispose();
       entry['price']?.dispose();
@@ -402,6 +310,7 @@ class _AdminSubItemPanelState extends State<AdminSubItemPanel>
     }
     _sizePriceUnitList.clear();
 
+    // Load sizes data if exists
     final List<dynamic>? sizesData = data['sizes'] as List<dynamic>?;
     if (sizesData != null && sizesData.isNotEmpty) {
       _hasSizes = true;
@@ -490,30 +399,25 @@ class _AdminSubItemPanelState extends State<AdminSubItemPanel>
                           const SizedBox(height: 10),
 
                           // Category dropdown
-                          FutureBuilder<List<Map<String, dynamic>>>(
-                            future: _supabase
+                          StreamBuilder<List<Map<String, dynamic>>>(
+                            stream: _supabase
                                 .from('categories')
-                                .select('id, categories_name'),
+                                .stream(primaryKey: ['id']),
                             builder: (context, snapshot) {
-                              if (snapshot.connectionState ==
-                                  ConnectionState.waiting) {
+                              if (!snapshot.hasData) {
                                 return const CircularProgressIndicator();
                               }
                               if (snapshot.hasError) {
                                 return const Text('Something went wrong');
                               }
-                              if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                                return const Text('No categories found');
-                              }
-                              final categories = snapshot.data!;
                               return DropdownButtonFormField<String>(
                                 value: selectedAddCategory.isNotEmpty
                                     ? selectedAddCategory
                                     : null,
-                                items: categories.map((category) {
+                                items: snapshot.data!.map((category) {
                                   return DropdownMenuItem<String>(
-                                    value: category['id'].toString(),
-                                    child: Text(category['categories_name']),
+                                    value: category['name'],
+                                    child: Text(category['name']),
                                   );
                                 }).toList(),
                                 onChanged: (String? newValue) {
@@ -521,15 +425,8 @@ class _AdminSubItemPanelState extends State<AdminSubItemPanel>
                                     selectedAddCategory = newValue!;
                                   });
                                 },
-                                decoration: InputDecoration(
+                                decoration: const InputDecoration(
                                   labelText: 'ক্যাটাগরি',
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  contentPadding: const EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                    vertical: 12,
-                                  ),
                                 ),
                               );
                             },
@@ -703,18 +600,18 @@ class _AdminSubItemPanelState extends State<AdminSubItemPanel>
                               setState(() => _isUploading = true);
 
                               final Map<String, dynamic> updateData = {
-                                'usernames': nameController.text,
-                                'userItem': subItemController.text,
-                                'userdetailss': detailsController.text,
-                                'userdiscounts':
+                                'name': nameController.text,
+                                'subItemName': subItemController.text,
+                                'details': detailsController.text,
+                                'discount':
                                     int.tryParse(discountController.text) ?? 0,
-                                'userstocks':
+                                'stock':
                                     int.tryParse(stockController.text) ?? 0,
-                                'userscompanys': companyController.text,
-                                'usercolors': colorController.text,
-                                'UCategorys': selectedAddCategory,
-                                'userimageUrls': imageUrlController.text,
-                                'uservideoUrls': videoUrlController.text,
+                                'company': companyController.text,
+                                'color': colorController.text,
+                                'category': selectedAddCategory,
+                                'imageUrl': imageUrlController.text,
+                                'videoUrl': videoUrlController.text,
                               };
 
                               if (_hasSizes) {
@@ -739,19 +636,21 @@ class _AdminSubItemPanelState extends State<AdminSubItemPanel>
                               }
 
                               await _supabase
-                                  .from('ponno')
+                                  .from('products')
                                   .update(updateData)
                                   .eq('id', docId);
 
                               Navigator.pop(context);
-                              setState(() {
-                                _futureProducts = _fetchProducts();
-                              });
-                              _showCustomSnackBar(
-                                  '✅ প্রোডাক্ট আপডেট করা হয়েছে', Colors.green);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                    content:
+                                        Text('✅ প্রোডাক্ট আপডেট করা হয়েছে')),
+                              );
                             } catch (e) {
-                              _showCustomSnackBar(
-                                  '❌ আপডেট করতে সমস্যা: $e', Colors.red);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                    content: Text('❌ আপডেট করতে সমস্যা: $e')),
+                              );
                             } finally {
                               setState(() => _isUploading = false);
                             }
@@ -809,798 +708,527 @@ class _AdminSubItemPanelState extends State<AdminSubItemPanel>
   }
 
   @override
+  void dispose() {
+    nameController.dispose();
+    subItemController.dispose();
+    unitController.dispose();
+    detailsController.dispose();
+    priceController.dispose();
+    discountController.dispose();
+    stockController.dispose();
+    companyController.dispose();
+    colorController.dispose();
+    sizeController.dispose();
+    searchController.dispose();
+    imageUrlController.dispose(); // Dispose new controller
+    videoUrlController.dispose(); // Dispose new controller
+
+    // Dispose size controllers
+    for (var entry in _sizePriceUnitList) {
+      entry['size']?.dispose();
+      entry['price']?.dispose();
+      entry['unit']?.dispose();
+    }
+
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return BackgroundContainer(
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        appBar: AppBar(
-          title: const Text('🛒 অ্যাডমিন সাব-আইটেম প্যানেল'),
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          actions: [
-            IconButton(
-              icon: Icon(_isExpanded ? Icons.expand_less : Icons.expand_more),
-              onPressed: () {
-                setState(() {
-                  _isExpanded = !_isExpanded;
-                  _isExpanded
-                      ? _fabAnimationController.forward()
-                      : _fabAnimationController.reverse();
-                });
-              },
-            ),
-          ],
-        ),
-        body: FadeTransition(
-          opacity: _fadeAnimation,
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(12.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Add product section
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 300),
-                  height: _isExpanded ? null : 0,
-                  child: _isExpanded
-                      ? _buildAddProductSection()
-                      : const SizedBox.shrink(),
-                ),
-
-                const SizedBox(height: 12),
-
-                // Search field
-                Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(30),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.grey.withOpacity(0.2),
-                        spreadRadius: 1,
-                        blurRadius: 5,
-                        offset: const Offset(0, 3),
-                      ),
-                    ],
-                  ),
-                  child: TextField(
-                    controller: searchController,
-                    decoration: const InputDecoration(
-                      labelText: 'নাম দিয়ে খুঁজুন',
-                      prefixIcon: Icon(Icons.search),
-                      border: InputBorder.none,
-                      contentPadding:
-                          EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                    ),
-                    onChanged: (_) => setState(() {
-                      _futureProducts = _fetchProducts();
-                    }),
-                  ),
-                ),
-
-                const SizedBox(height: 12),
-
-                // Products list
-                FutureBuilder<List<Map<String, dynamic>>>(
-                  future: _futureProducts,
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return _buildLoadingIndicator();
-                    } else if (snapshot.hasError) {
-                      return _buildErrorWidget(snapshot.error.toString());
-                    } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                      return _buildEmptyWidget();
-                    }
-
-                    return _buildProductGrid(snapshot.data!);
-                  },
-                ),
-              ],
-            ),
-          ),
-        ),
-        floatingActionButton: FloatingActionButton(
-          onPressed: () {
-            setState(() {
-              _isExpanded = !_isExpanded;
-              _isExpanded
-                  ? _fabAnimationController.forward()
-                  : _fabAnimationController.reverse();
-            });
-          },
-          backgroundColor: Theme.of(context).primaryColor,
-          child: AnimatedIcon(
-            icon: AnimatedIcons.menu_close,
-            progress: _fabAnimationController,
-            color: Colors.white,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildAddProductSection() {
-    return Card(
-      elevation: 5,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(15),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
+    return Scaffold(
+      appBar: AppBar(title: const Text('🛒 অ্যাডমিন সাব-আইটেম প্যানেল')),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(12.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
+            ExpansionTile(
+              title: const Text('➕ নতুন সাব-আইটেম যুক্ত করুন'),
               children: [
-                const Icon(Icons.add_circle, color: Colors.green),
-                const SizedBox(width: 8),
-                const Text(
-                  'নতুন সাব-আইটেম যুক্ত করুন',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const Spacer(),
-                IconButton(
-                  icon: const Icon(Icons.close),
-                  onPressed: () {
-                    setState(() {
-                      _isExpanded = false;
-                      _fabAnimationController.reverse();
-                    });
-                  },
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-
-            // Category dropdown
-            FutureBuilder<List<Map<String, dynamic>>>(
-              future:
-                  _supabase.from('categories').select('id, categories_name'),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const CircularProgressIndicator();
-                }
-                if (snapshot.hasError) {
-                  return const Text('Something went wrong');
-                }
-                if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                  return const Text('No categories found');
-                }
-                final categories = snapshot.data!;
-                return DropdownButtonFormField<String>(
-                  value: selectedAddCategory.isNotEmpty
-                      ? selectedAddCategory
-                      : null,
-                  items: categories.map((category) {
-                    return DropdownMenuItem<String>(
-                      value: category['id'].toString(),
-                      child: Text(category['categories_name']),
-                    );
-                  }).toList(),
-                  onChanged: (String? newValue) {
-                    setState(() {
-                      selectedAddCategory = newValue!;
-                    });
-                  },
-                  decoration: InputDecoration(
-                    labelText: 'ক্যাটাগরি',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
-                  ),
-                );
-              },
-            ),
-            const SizedBox(height: 10),
-
-            _buildTextField(nameController, 'নাম'),
-            const SizedBox(height: 10),
-            _buildTextField(subItemController, 'সাব-আইটেম'),
-            const SizedBox(height: 10),
-            _buildTextField(detailsController, 'বিস্তারিত', maxLines: 3),
-            const SizedBox(height: 10),
-            _buildNumberTextField(discountController, 'ডিসকাউন্ট'),
-            const SizedBox(height: 10),
-            _buildNumberTextField(stockController, 'স্টক'),
-            const SizedBox(height: 10),
-            _buildTextField(companyController, 'কোম্পানি'),
-            const SizedBox(height: 10),
-            _buildTextField(colorController, 'রং'),
-            const SizedBox(height: 10),
-
-            // Size options
-            CheckboxListTile(
-              title: const Text('সাইজ অনুযায়ী দাম ও ইউনিট'),
-              value: _hasSizes,
-              onChanged: (bool? value) {
-                setState(() {
-                  _hasSizes = value ?? false;
-                  if (_hasSizes) {
-                    priceController.clear();
-                    unitController.clear();
-                    sizeController.clear();
-                    if (_sizePriceUnitList.isEmpty) {
-                      _addSizePriceUnitField();
-                    }
-                  } else {
-                    for (var entry in _sizePriceUnitList) {
-                      entry['size']?.dispose();
-                      entry['price']?.dispose();
-                      entry['unit']?.dispose();
-                    }
-                    _sizePriceUnitList.clear();
-                  }
-                  _updateMainPriceUnitFromSizes();
-                });
-              },
-              activeColor: Theme.of(context).primaryColor,
-            ),
-
-            if (_hasSizes) ...[
-              ListView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: _sizePriceUnitList.length,
-                itemBuilder: (context, index) {
-                  final entry = _sizePriceUnitList[index];
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8.0),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: _buildTextField(
-                            entry['size']!,
-                            'সাইজ ${index + 1}',
-                            onChanged: (_) =>
-                                setState(() => _updateMainPriceUnitFromSizes()),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: _buildNumberTextField(
-                            entry['price']!,
-                            'দাম ${index + 1}',
-                            onChanged: (_) =>
-                                setState(() => _updateMainPriceUnitFromSizes()),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: _buildTextField(
-                            entry['unit']!,
-                            'ইউনিট ${index + 1}',
-                            onChanged: (_) =>
-                                setState(() => _updateMainPriceUnitFromSizes()),
-                          ),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.remove_circle,
-                              color: Colors.red),
-                          onPressed: () {
-                            setState(() {
-                              _removeSizePriceUnitField(index);
-                            });
-                          },
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              ),
-              Align(
-                alignment: Alignment.centerRight,
-                child: IconButton(
-                  icon: const Icon(Icons.add_circle, color: Colors.green),
-                  onPressed: () {
-                    setState(() {
-                      _addSizePriceUnitField();
-                    });
-                  },
-                ),
-              ),
-            ] else ...[
-              _buildNumberTextField(priceController, 'দাম'),
-              const SizedBox(height: 10),
-              _buildTextField(unitController, 'ইউনিট'),
-              const SizedBox(height: 10),
-              _buildTextField(sizeController, 'সাইজ'),
-              const SizedBox(height: 10),
-            ],
-
-            // Image section
-            Row(
-              children: [
-                ElevatedButton.icon(
-                  onPressed: _isUploading ? null : pickImage,
-                  icon: const Icon(Icons.image),
-                  label: const Text('ছবি সিলেক্ট করুন'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue,
-                    foregroundColor: Colors.white,
-                  ),
-                ),
-                const SizedBox(width: 10),
-                if (imageUrl.isNotEmpty)
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: Image.network(imageUrl,
-                        width: 50, height: 50, fit: BoxFit.cover),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            _buildTextField(imageUrlController, 'ছবি URL'),
-            const SizedBox(height: 10),
-
-            // Video section
-            Row(
-              children: [
-                ElevatedButton.icon(
-                  onPressed: _isUploading ? null : pickVideo,
-                  icon: const Icon(Icons.video_library),
-                  label: const Text('ভিডিও সিলেক্ট করুন'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.red,
-                    foregroundColor: Colors.white,
-                  ),
-                ),
-                const SizedBox(width: 10),
-                if (videoUrl.isNotEmpty)
-                  const Icon(Icons.video_file, color: Colors.red),
-              ],
-            ),
-            const SizedBox(height: 10),
-            _buildTextField(videoUrlController, 'ভিডিও URL'),
-            const SizedBox(height: 16),
-
-            // Add product button
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                icon: _isUploading
-                    ? const CircularProgressIndicator(
-                        color: Colors.white,
-                      )
-                    : const Icon(Icons.add),
-                label: const Text("প্রোডাক্ট যোগ করুন"),
-                onPressed: _isUploading
-                    ? null
-                    : () async {
-                        if (selectedAddCategory.isEmpty ||
-                            nameController.text.isEmpty) {
-                          _showCustomSnackBar(
-                              '⚠️ সব ফিল্ড পূরণ করুন', Colors.orange);
-                          return;
-                        }
-
-                        try {
-                          setState(() => _isUploading = true);
-
-                          final Map<String, dynamic> addData = {
-                            'usernames': nameController.text.trim(),
-                            'userItem': subItemController.text.trim(),
-                            'userdetailss': detailsController.text.trim(),
-                            'userdiscounts': int.tryParse(
-                                  discountController.text.trim(),
-                                ) ??
-                                0,
-                            'userstocks': int.tryParse(
-                                  stockController.text.trim(),
-                                ) ??
-                                0,
-                            'userscompanys': companyController.text.trim(),
-                            'usercolors': colorController.text.trim(),
-                            'UCategorys': selectedAddCategory,
-                            'userimageUrls': imageUrlController.text,
-                            'uservideoUrls': videoUrlController.text,
-                            'createdAt': DateTime.now().toIso8601String(),
-                          };
-
-                          if (_hasSizes) {
-                            addData['sizes'] = _sizePriceUnitList
-                                .map((entry) => {
-                                      'size': entry['size']?.text,
-                                      'price': double.tryParse(
-                                              entry['price']?.text ?? '') ??
-                                          0,
-                                      'unit': entry['unit']?.text,
-                                    })
-                                .toList();
-                          } else {
-                            addData['price'] =
-                                double.tryParse(priceController.text.trim()) ??
-                                    0;
-                            addData['unit'] = unitController.text.trim();
-                            addData['size'] = sizeController.text.trim();
+                Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Column(
+                    children: [
+                      StreamBuilder<List<Map<String, dynamic>>>(
+                        stream: _supabase
+                            .from('categories')
+                            .stream(primaryKey: ['id']),
+                        builder: (context, snapshot) {
+                          if (!snapshot.hasData) {
+                            return const CircularProgressIndicator();
                           }
+                          if (snapshot.hasError) {
+                            return const Text('Something went wrong');
+                          }
+                          return DropdownButtonFormField<String>(
+                            value: selectedAddCategory.isNotEmpty
+                                ? selectedAddCategory
+                                : null,
+                            items: snapshot.data!.map((category) {
+                              return DropdownMenuItem<String>(
+                                value: category['name'],
+                                child: Text(category['name']),
+                              );
+                            }).toList(),
+                            onChanged: (String? newValue) {
+                              setState(() {
+                                selectedAddCategory = newValue!;
+                              });
+                            },
+                            decoration: const InputDecoration(
+                              labelText: 'ক্যাটাগরি',
+                            ),
+                          );
+                        },
+                      ),
+                      TextField(
+                        controller: nameController,
+                        decoration: const InputDecoration(labelText: 'নাম'),
+                      ),
+                      TextField(
+                        controller: subItemController,
+                        decoration: const InputDecoration(
+                          labelText: 'সাব-আইটেম',
+                        ),
+                      ),
+                      TextField(
+                        controller: unitController,
+                        decoration: const InputDecoration(labelText: 'ইউনিট'),
+                      ),
+                      TextField(
+                        controller: priceController,
+                        decoration: const InputDecoration(labelText: 'দাম'),
+                      ),
+                      TextField(
+                        controller: discountController,
+                        decoration: const InputDecoration(
+                          labelText: 'ডিসকাউন্ট',
+                        ),
+                      ),
+                      TextField(
+                        controller: stockController,
+                        decoration: const InputDecoration(labelText: 'স্টক'),
+                      ),
+                      TextField(
+                        controller: companyController,
+                        decoration: const InputDecoration(
+                          labelText: 'কোম্পানি',
+                        ),
+                      ),
+                      TextField(
+                        controller: colorController,
+                        decoration: const InputDecoration(labelText: 'রং'),
+                      ),
+                      TextField(
+                        controller: sizeController,
+                        decoration: const InputDecoration(labelText: 'সাইজ'),
+                      ),
+                      TextField(
+                        controller: detailsController,
+                        decoration: const InputDecoration(
+                          labelText: 'বিস্তারিত',
+                        ),
+                      ),
+                      const SizedBox(height: 10),
 
-                          await _supabase.from('ponno').insert(addData);
-
-                          // Clear form
-                          nameController.clear();
-                          subItemController.clear();
-                          unitController.clear();
-                          detailsController.clear();
-                          priceController.clear();
-                          discountController.clear();
-                          stockController.clear();
-                          companyController.clear();
-                          colorController.clear();
-                          sizeController.clear();
+                      // Size options
+                      CheckboxListTile(
+                        title: const Text('সাইজ অনুযায়ী দাম ও ইউনিট'),
+                        value: _hasSizes,
+                        onChanged: (bool? value) {
                           setState(() {
-                            imageUrl = '';
-                            videoUrl = '';
-                            selectedAddCategory = '';
-                            _sizePriceUnitList.clear();
-                            _hasSizes = false;
+                            _hasSizes = value ?? false;
+                            if (_hasSizes) {
+                              priceController.clear();
+                              unitController.clear();
+                              sizeController.clear();
+                              if (_sizePriceUnitList.isEmpty) {
+                                _addSizePriceUnitField();
+                              }
+                            } else {
+                              for (var entry in _sizePriceUnitList) {
+                                entry['size']?.dispose();
+                                entry['price']?.dispose();
+                                entry['unit']?.dispose();
+                              }
+                              _sizePriceUnitList.clear();
+                            }
+                            _updateMainPriceUnitFromSizes();
                           });
-                          imageUrlController.clear();
-                          videoUrlController.clear();
-                          setState(() {
-                            _futureProducts = _fetchProducts();
-                          });
-
-                          _showCustomSnackBar(
-                              '✅ প্রোডাক্ট সফলভাবে যোগ করা হয়েছে',
-                              Colors.green);
-                        } catch (e) {
-                          _showCustomSnackBar('❌ ত্রুটি: $e', Colors.red);
-                        } finally {
-                          setState(() => _isUploading = false);
-                        }
-                      },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildLoadingIndicator() {
-    return const Center(
-      child: Padding(
-        padding: EdgeInsets.all(20.0),
-        child: CircularProgressIndicator(),
-      ),
-    );
-  }
-
-  Widget _buildErrorWidget(String error) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          children: [
-            const Icon(Icons.error_outline, size: 50, color: Colors.red),
-            const SizedBox(height: 10),
-            Text('ত্রুটি: $error'),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildEmptyWidget() {
-    return const Center(
-      child: Padding(
-        padding: EdgeInsets.all(20.0),
-        child: Column(
-          children: [
-            Icon(Icons.inbox_outlined, size: 50, color: Colors.grey),
-            SizedBox(height: 10),
-            Text('কোনো প্রোডাক্ট পাওয়া যায়নি'),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildProductGrid(List<Map<String, dynamic>> products) {
-    final groupedProducts = _groupProductsBySubItem(products);
-
-    return Column(
-      children: groupedProducts.entries.map((entry) {
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildSubItemHeader(entry.key),
-            _buildAdminProductsGrid(entry.value),
-          ],
-        );
-      }).toList(),
-    );
-  }
-
-  Map<String, List<Map<String, dynamic>>> _groupProductsBySubItem(
-      List<Map<String, dynamic>> products) {
-    final Map<String, List<Map<String, dynamic>>> grouped = {};
-    for (var product in products) {
-      final subItem = (product['userItem'] ?? 'Others').toString();
-      grouped.putIfAbsent(subItem, () => []).add(product);
-    }
-    return grouped;
-  }
-
-  Widget _buildSubItemHeader(String subItemName) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-      margin: const EdgeInsets.only(bottom: 8.0),
-      decoration: BoxDecoration(
-        color: Theme.of(context).primaryColor.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Text(
-        subItemName,
-        style: TextStyle(
-          fontSize: 18,
-          fontWeight: FontWeight.bold,
-          color: Theme.of(context).primaryColor,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildAdminProductsGrid(List<Map<String, dynamic>> products) {
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      padding: const EdgeInsets.all(10),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        childAspectRatio: 0.65,
-        crossAxisSpacing: 10,
-        mainAxisSpacing: 10,
-      ),
-      itemCount: products.length,
-      itemBuilder: (context, index) {
-        return _buildAdminProductCard(products[index]);
-      },
-    );
-  }
-
-  Map<String, dynamic> _getFirstSizePriceUnit(List<dynamic>? sizesData) {
-    if (sizesData == null || sizesData.isEmpty) {
-      return {};
-    }
-    return sizesData.first as Map<String, dynamic>;
-  }
-
-  Widget _buildAdminProductCard(Map<String, dynamic> product) {
-    final docId = product['id'] ?? '';
-    final name = product['usernames'] ?? 'Unknown';
-    double displayPrice = (product['price'] ?? 0).toDouble();
-    String displayUnit = product['unit'] ?? '';
-    final discount = (product['userdiscounts'] ?? 0).toInt();
-    final imageUrl = product['userimageUrls'] ?? '';
-    final company = product['userscompanys'] ?? 'Unknown';
-    final details = product['userdetailss'] ?? '';
-    final stock = (product['userstocks'] ?? 0).toInt();
-    final subItemName = (product['userItem'] ?? 'Others').toString();
-    final category =
-        product['categories']?['categories_name'] ?? widget.categoryName;
-    final videoUrl = product['uservideoUrls'] ?? '';
-
-    final List<dynamic>? sizesData = product['sizes'] as List<dynamic>?;
-    if (sizesData != null && sizesData.isNotEmpty) {
-      final firstSizeDetails = _getFirstSizePriceUnit(sizesData);
-      if (firstSizeDetails.isNotEmpty) {
-        displayPrice = (firstSizeDetails['price'] ?? 0).toDouble();
-        displayUnit = firstSizeDetails['unit'] ?? '';
-      }
-    }
-
-    final discountedPrice =
-        (displayPrice * (100 - discount) / 100).toStringAsFixed(2);
-
-    return Card(
-      elevation: 5,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(15),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // Product image with discount badge and stock indicator
-          Expanded(
-            flex: 3,
-            child: Stack(
-              children: [
-                ClipRRect(
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(15),
-                    topRight: Radius.circular(15),
-                  ),
-                  child: Container(
-                    color: Colors.grey[200],
-                    child: Image.network(
-                      imageUrl,
-                      width: double.infinity,
-                      height: double.infinity,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Container(
-                          color: Colors.grey[200],
-                          child: const Icon(Icons.broken_image,
-                              size: 40, color: Colors.grey),
-                        );
-                      },
-                    ),
-                  ),
-                ),
-                if (discount > 0)
-                  Positioned(
-                    top: 8,
-                    right: 8,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.red,
-                        borderRadius: BorderRadius.circular(20),
+                        },
+                        activeColor: Theme.of(context).primaryColor,
                       ),
-                      child: Text(
-                        '-$discount%',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ),
-                if (stock == 0)
-                  Positioned.fill(
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.6),
-                        borderRadius: const BorderRadius.only(
-                          topLeft: Radius.circular(15),
-                          topRight: Radius.circular(15),
-                        ),
-                      ),
-                      child: const Center(
-                        child: Text(
-                          'স্টক শেষ',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
 
-          // Product details
-          Expanded(
-            flex: 2,
-            child: Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    name,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      Text(
-                        '৳$discountedPrice',
-                        style: const TextStyle(
-                          color: Colors.green,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
-                        ),
-                      ),
-                      const SizedBox(width: 5),
-                      if (discount > 0)
-                        Text(
-                          '৳${displayPrice.toStringAsFixed(2)}',
-                          style: const TextStyle(
-                            color: Colors.grey,
-                            fontSize: 12,
-                            decoration: TextDecoration.lineThrough,
-                          ),
-                        ),
-                    ],
-                  ),
-                  const Spacer(),
-                  // Action buttons
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(
-                        child: ElevatedButton.icon(
-                          icon: const Icon(Icons.edit, size: 16),
-                          label: const Text('এডিট',
-                              style: TextStyle(fontSize: 12)),
-                          onPressed: () => showEditDialog(docId, product),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.blue,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 4),
-                            minimumSize: Size.zero,
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 5),
-                      Expanded(
-                        child: ElevatedButton.icon(
-                          icon: const Icon(Icons.delete, size: 16),
-                          label: const Text('ডিলিট',
-                              style: TextStyle(fontSize: 12)),
-                          onPressed: () {
-                            showDialog(
-                              context: context,
-                              builder: (context) => AlertDialog(
-                                title: const Text('ডিলিট নিশ্চিত করুন'),
-                                content: const Text(
-                                  'আপনি কি এই প্রোডাক্টটি ডিলিট করতে চান? এই অ্যাকশনটি পূর্বাবস্থায় ফেরানো যাবে না।',
-                                ),
-                                actions: [
-                                  TextButton(
-                                    onPressed: () => Navigator.pop(context),
-                                    child: const Text('বাতিল করুন'),
+                      if (_hasSizes) ...[
+                        ListView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: _sizePriceUnitList.length,
+                          itemBuilder: (context, index) {
+                            final entry = _sizePriceUnitList[index];
+                            return Padding(
+                              padding:
+                                  const EdgeInsets.symmetric(vertical: 8.0),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: TextField(
+                                      controller: entry['size']!,
+                                      decoration: InputDecoration(
+                                        labelText: 'সাইজ ${index + 1}',
+                                        border: OutlineInputBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(10),
+                                        ),
+                                        contentPadding:
+                                            const EdgeInsets.symmetric(
+                                          horizontal: 16,
+                                          vertical: 12,
+                                        ),
+                                      ),
+                                      onChanged: (_) => setState(() =>
+                                          _updateMainPriceUnitFromSizes()),
+                                    ),
                                   ),
-                                  ElevatedButton(
-                                    onPressed: () async {
-                                      Navigator.pop(context);
-                                      await deleteProduct(
-                                          docId, imageUrl, videoUrl);
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: TextField(
+                                      controller: entry['price']!,
+                                      decoration: InputDecoration(
+                                        labelText: 'দাম ${index + 1}',
+                                        border: OutlineInputBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(10),
+                                        ),
+                                        contentPadding:
+                                            const EdgeInsets.symmetric(
+                                          horizontal: 16,
+                                          vertical: 12,
+                                        ),
+                                      ),
+                                      keyboardType: TextInputType.number,
+                                      onChanged: (_) => setState(() =>
+                                          _updateMainPriceUnitFromSizes()),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: TextField(
+                                      controller: entry['unit']!,
+                                      decoration: InputDecoration(
+                                        labelText: 'ইউনিট ${index + 1}',
+                                        border: OutlineInputBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(10),
+                                        ),
+                                        contentPadding:
+                                            const EdgeInsets.symmetric(
+                                          horizontal: 16,
+                                          vertical: 12,
+                                        ),
+                                      ),
+                                      onChanged: (_) => setState(() =>
+                                          _updateMainPriceUnitFromSizes()),
+                                    ),
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(Icons.remove_circle,
+                                        color: Colors.red),
+                                    onPressed: () {
                                       setState(() {
-                                        _futureProducts = _fetchProducts();
+                                        _removeSizePriceUnitField(index);
                                       });
                                     },
-                                    child: const Text('ডিলিট করুন'),
                                   ),
                                 ],
                               ),
                             );
                           },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.red,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 4),
-                            minimumSize: Size.zero,
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: IconButton(
+                            icon: const Icon(Icons.add_circle,
+                                color: Colors.green),
+                            onPressed: () {
+                              setState(() {
+                                _addSizePriceUnitField();
+                              });
+                            },
                           ),
                         ),
+                      ] else ...[
+                        TextField(
+                          controller: sizeController,
+                          decoration: const InputDecoration(labelText: 'সাইজ'),
+                        ),
+                      ],
+
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          ElevatedButton(
+                            onPressed: _isUploading ? null : pickImage,
+                            child: const Text('ছবি সিলেক্ট করুন'),
+                          ),
+                          const SizedBox(width: 10),
+                          if (imageUrl.isNotEmpty)
+                            Image.network(imageUrl, width: 50, height: 50),
+                        ],
+                      ),
+                      TextField(
+                        controller: imageUrlController,
+                        decoration: const InputDecoration(labelText: 'ছবি URL'),
+                        onChanged: (value) => setState(() => imageUrl = value),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          ElevatedButton(
+                            onPressed: _isUploading ? null : pickVideo,
+                            child: const Text('ভিডিও সিলেক্ট করুন'),
+                          ),
+                          const SizedBox(width: 10),
+                          if (videoUrl.isNotEmpty)
+                            Expanded(
+                              child: SelectableText(
+                                videoUrl,
+                                style: const TextStyle(color: Colors.blue),
+                              ),
+                            ),
+                        ],
+                      ),
+                      TextField(
+                        controller: videoUrlController,
+                        decoration: const InputDecoration(
+                          labelText: 'ভিডিও URL',
+                        ),
+                        onChanged: (value) => setState(() => videoUrl = value),
+                      ),
+                      const SizedBox(height: 12),
+                      ElevatedButton.icon(
+                        icon: _isUploading
+                            ? const CircularProgressIndicator(
+                                color: Colors.white,
+                              )
+                            : const Icon(Icons.add),
+                        label: const Text("প্রোডাক্ট যোগ করুন"),
+                        onPressed: _isUploading
+                            ? null
+                            : () async {
+                                if (selectedAddCategory.isEmpty ||
+                                    nameController.text.isEmpty) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('⚠️ সব ফিল্ড পূরণ করুন'),
+                                    ),
+                                  );
+                                  return;
+                                }
+
+                                try {
+                                  setState(() => _isUploading = true);
+
+                                  final Map<String, dynamic> addData = {
+                                    'name': nameController.text.trim(),
+                                    'subItemName':
+                                        subItemController.text.trim(),
+                                    'unit': unitController.text.trim(),
+                                    'details': detailsController.text.trim(),
+                                    'discount': int.tryParse(
+                                          discountController.text.trim(),
+                                        ) ??
+                                        0,
+                                    'stock': int.tryParse(
+                                          stockController.text.trim(),
+                                        ) ??
+                                        0,
+                                    'company': companyController.text.trim(),
+                                    'color': colorController.text.trim(),
+                                    'category': selectedAddCategory,
+                                    'imageUrl': imageUrlController
+                                        .text, // Use controller value
+                                    'videoUrl': videoUrlController
+                                        .text, // Use controller value
+                                    'createdAt':
+                                        DateTime.now().toIso8601String(),
+                                    'updatedAt':
+                                        DateTime.now().toIso8601String(),
+                                  };
+
+                                  if (_hasSizes) {
+                                    addData['sizes'] = _sizePriceUnitList
+                                        .map((entry) => {
+                                              'size': entry['size']?.text,
+                                              'price': double.tryParse(
+                                                      entry['price']?.text ??
+                                                          '') ??
+                                                  0,
+                                              'unit': entry['unit']?.text,
+                                            })
+                                        .toList();
+                                  } else {
+                                    addData['price'] = double.tryParse(
+                                            priceController.text.trim()) ??
+                                        0;
+                                    addData['unit'] =
+                                        unitController.text.trim();
+                                    addData['size'] =
+                                        sizeController.text.trim();
+                                  }
+
+                                  await _supabase
+                                      .from('products')
+                                      .insert(addData);
+
+                                  // ফিল্ড ক্লিয়ার
+                                  nameController.clear();
+                                  subItemController.clear();
+                                  unitController.clear();
+                                  detailsController.clear();
+                                  priceController.clear();
+                                  discountController.clear();
+                                  stockController.clear();
+                                  companyController.clear();
+                                  colorController.clear();
+                                  sizeController.clear();
+                                  setState(() {
+                                    imageUrl = '';
+                                    videoUrl = '';
+                                    selectedAddCategory = '';
+                                    _sizePriceUnitList.clear();
+                                    _hasSizes = false;
+                                  });
+                                  imageUrlController
+                                      .clear(); // Clear new controller
+                                  videoUrlController
+                                      .clear(); // Clear new controller
+
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                        '✅ প্রোডাক্ট সফলভাবে যোগ করা হয়েছে',
+                                      ),
+                                    ),
+                                  );
+                                } catch (e) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text('❌ ত্রুটি: $e')),
+                                  );
+                                } finally {
+                                  setState(() => _isUploading = false);
+                                }
+                              },
                       ),
                     ],
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-          ),
-        ],
+            const SizedBox(height: 12),
+            TextField(
+              controller: searchController,
+              decoration: const InputDecoration(
+                labelText: 'নাম দিয়ে খুঁজুন',
+                prefixIcon: Icon(Icons.search),
+                border: OutlineInputBorder(),
+              ),
+              onChanged: (_) => setState(() {}),
+            ),
+            const SizedBox(height: 12),
+            StreamBuilder<List<Map<String, dynamic>>>(
+              stream: _supabase.from('products').stream(primaryKey: ['id']),
+              builder: (context, snapshot) {
+                if (snapshot.hasError) {
+                  return const Text('ডেটা লোড করতে সমস্যা হয়েছে');
+                }
+
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                final products = snapshot.data?.where((product) {
+                      if (selectedCategory != "সব ক্যাটাগরি" &&
+                          product['category'] != selectedCategory) return false;
+                      return product['name']?.toString().toLowerCase().contains(
+                                searchController.text.toLowerCase(),
+                              ) ??
+                          false;
+                    }).toList() ??
+                    [];
+
+                return ListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: products.length,
+                  itemBuilder: (context, index) {
+                    final product = products[index];
+                    return Card(
+                      child: ListTile(
+                        leading: product['imageUrl'] != null &&
+                                product['imageUrl'].toString().isNotEmpty
+                            ? Image.network(
+                                product['imageUrl'],
+                                width: 50,
+                                height: 50,
+                              )
+                            : const Icon(Icons.image),
+                        title: Text(product['name'] ?? ''),
+                        subtitle: Text(
+                          '${product['category'] ?? ''} - ${product['company'] ?? ''}',
+                        ),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.edit, color: Colors.blue),
+                              onPressed: () => showEditDialog(
+                                product['id'],
+                                product,
+                              ),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.delete, color: Colors.red),
+                              onPressed: () {
+                                showDialog(
+                                  context: context,
+                                  builder: (context) => AlertDialog(
+                                    title: const Text('ডিলিট নিশ্চিত করুন'),
+                                    content: const Text(
+                                      'আপনি কি এই প্রোডাক্টটি ডিলিট করতে চান? এই অ্যাকশনটি পূর্বাবস্থায় ফেরানো যাবে না।',
+                                    ),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () => Navigator.pop(context),
+                                        child: const Text('বাতিল করুন'),
+                                      ),
+                                      ElevatedButton(
+                                        onPressed: () async {
+                                          Navigator.pop(
+                                              context); // Close the dialog
+                                          await deleteProduct(
+                                            product['id'],
+                                            product['imageUrl'],
+                                            product['videoUrl'],
+                                          );
+                                        },
+                                        child: const Text('ডিলিট করুন'),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
+          ],
+        ),
       ),
     );
   }

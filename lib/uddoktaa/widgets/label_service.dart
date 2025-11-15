@@ -1,4 +1,4 @@
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:supabase_flutter/supabase_flutter.dart'; // Firebase এর পরিবর্তে Supabase
 
 class LabelService {
   static final LabelService _instance = LabelService._internal();
@@ -17,7 +17,11 @@ class LabelService {
           .eq('id', 'bn')
           .single();
 
-      _labels = response['labels'];
+      if (response.isNotEmpty) {
+        _labels = response['labels'];
+      } else {
+        _labels = _getDefaultLabels();
+      }
     } catch (e) {
       print('Error loading labels: $e');
       _labels = _getDefaultLabels();

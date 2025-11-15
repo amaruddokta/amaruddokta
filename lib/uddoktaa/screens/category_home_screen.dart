@@ -8,10 +8,10 @@ class CategoryHomeScreen extends StatelessWidget {
   final String categoryIcon;
 
   const CategoryHomeScreen({
-    super.key,
+    Key? key,
     required this.categoryName,
     required this.categoryIcon,
-  });
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {

@@ -11,7 +11,7 @@ class FavoriteScreen extends StatelessWidget {
   final FavoriteController favoriteController = Get.find<FavoriteController>();
   final CartController cartController = Get.find<CartController>();
 
-  FavoriteScreen({super.key});
+  FavoriteScreen({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {

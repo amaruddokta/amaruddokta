@@ -1,8 +1,6 @@
 // ignore_for_file: unused_import
 
 import 'package:amar_uddokta/madmin/screens/comment_admin_panel.dart';
-import 'package:amar_uddokta/madmin/screens/offer_form_screen.dart';
-import 'package:amar_uddokta/madmin/screens/video_admin.dart';
 
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -12,7 +10,6 @@ import 'MarqueeEditor.dart';
 
 import 'OrderAdminScreen.dart';
 import 'OrdersExportPanel.dart';
-import 'PackageAdminPanel.dart';
 
 import 'about_admin_screen.dart';
 import 'admin_delivery_fee_screen.dart';
@@ -20,13 +17,10 @@ import 'call_number_admin_screen.dart';
 import 'category_admin_screen.dart';
 import 'notification_admin_screen.dart';
 import 'terms_admin_screen.dart';
-import 'whatsapp_number_admin_screen.dart';
-import 'AddEditFormScreen.dart';
+
 import 'AdminUserList.dart';
 import 'SalesDetailScreen.dart';
 import 'DashboardCard.dart';
-import '../referral_admin_screen.dart';
-import 'admin_chat_screen.dart';
 
 const double DESKTOP = 800;
 
@@ -133,50 +127,36 @@ class AdminDashboardScreen extends StatelessWidget {
                       _menuButton(context, 'অর্ডার এক্সপোর্ট',
                           Icons.file_download, OrdersExportPanel()),
                       _menuButton(context, 'ইউজার লিস্ট', Icons.people,
-                          const UserListScreen()),
+                          UserListScreen()),
                       _menuButton(context, 'Notice', Icons.campaign_outlined,
-                          const MarqueeEditor()),
-                      _menuButton(context, 'Banner', Icons.image_outlined,
-                          const PackageAdminPanel()),
-                      _menuButton(context, 'Offer', Icons.local_offer_outlined,
-                          const OfferManagementScreen()),
+                          MarqueeEditor()),
                       _menuButton(context, 'SubItem', Icons.category_outlined,
-                          const AdminSubItemPanel()),
-                      _menuButton(context, 'Video Banner',
-                          Icons.video_collection_outlined, const AdminPanel()),
+                          AdminSubItemPanel()),
                       _menuButton(
                           context,
                           'Delivery Fee',
                           Icons.delivery_dining_outlined,
-                          const AdminDeliveryFeeScreen()),
+                          AdminDeliveryFeeScreen()),
                       _menuButton(context, 'Terms', Icons.description_outlined,
-                          const TermsAdminScreen()),
+                          TermsAdminScreen()),
                       _menuButton(context, 'About', Icons.info_outline,
-                          const AboutAdminScreen()),
+                          AboutAdminScreen()),
                       _menuButton(context, 'Call Number', Icons.call,
-                          const CallNumberAdminScreen()),
-                      _menuButton(context, 'WhatsApp', Icons.message_outlined,
-                          const WhatsappNumberAdminScreen()),
+                          CallNumberAdminScreen()),
                       _menuButton(
                           context,
                           'Notification',
                           Icons.notifications_active_outlined,
-                          const NotificationAdminScreen()),
+                          NotificationAdminScreen()),
                       _menuButton(context, 'Comment', Icons.comment,
-                          const CommentAdminPanel()),
+                          CommentAdminPanel()),
                       _menuButton(
                           context,
                           'Category',
                           Icons.dashboard_customize_outlined,
-                          const CategoryAdminScreen()),
-                      _menuButton(context, 'Add/Edit ফর্ম', Icons.edit_document,
-                          const AddEditFormScreen()),
+                          CategoryAdminScreen()),
                       _menuButton(context, 'বিক্রির বিস্তারিত',
-                          Icons.bar_chart_outlined, const SalesDetailScreen()),
-                      _menuButton(context, 'Referral Info', Icons.card_giftcard,
-                          const ReferralAdminScreen()),
-                      _menuButton(context, 'User Chats', Icons.chat,
-                          const AdminChatScreen()),
+                          Icons.bar_chart_outlined, SalesDetailScreen()),
                     ],
                   );
                 },
@@ -312,45 +292,32 @@ class AdminDashboardScreen extends StatelessWidget {
 
 // === Database Queries ===
 Future<int> getTotalOrdersCount() async {
-  final response =
-      await Supabase.instance.client.from('orders').select('count()');
-  return response[0]['count'] as int;
+  final response = await Supabase.instance.client.from('orders').select('*');
+  return response.length;
 }
 
 Future<int> getTotalUsersCount() async {
-  final response =
-      await Supabase.instance.client.from('users').select('count()');
-  return response[0]['count'] as int;
+  final response = await Supabase.instance.client.from('users').select('*');
+  return response.length;
 }
 
 Future<double> getTodaySalesAmount() async {
   final today = DateTime.now();
-  final startOfDay = DateTime(today.year, today.month, today.day);
-  final endOfDay =
-      DateTime(today.year, today.month, today.day, 23, 59, 59, 999);
-
-  final startOfDayISO = startOfDay.toIso8601String();
-  final endOfDayISO = endOfDay.toIso8601String();
+  final startOfDay =
+      DateTime(today.year, today.month, today.day).toIso8601String();
+  final endOfDay = DateTime(today.year, today.month, today.day, 23, 59, 59)
+      .toIso8601String();
 
   final response = await Supabase.instance.client
       .from('orders')
-      .select('totalAmount, timestamp')
-      .gte('timestamp', startOfDayISO)
-      .lte('timestamp', endOfDayISO);
+      .select('totalAmount')
+      .gte('timestamp', startOfDay)
+      .lte('timestamp', endOfDay);
 
   double total = 0.0;
-  for (var item in response) {
-    // Iterate directly over response
-    final amount = item['totalAmount'];
-    if (amount is num) {
-      total += amount.toDouble();
-    } else if (amount is String) {
-      try {
-        total += double.parse(amount);
-      } catch (e) {
-        print('Could not parse totalAmount: $amount');
-      }
-    }
+  for (var order in response) {
+    final amount = order['totalAmount'] ?? 0;
+    total += (amount is int) ? amount.toDouble() : amount;
   }
 
   return total;

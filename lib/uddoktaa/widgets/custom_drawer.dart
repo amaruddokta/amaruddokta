@@ -3,6 +3,7 @@ import 'package:amar_uddokta/madmin/screens/admin_dashboard_screen.dart';
 
 import 'package:amar_uddokta/uddoktaa/screens/TermsApp.dart';
 import 'package:amar_uddokta/uddoktaa/screens/about_screen.dart';
+import 'package:amar_uddokta/uddoktaa/screens/registration_screen.dart';
 
 // Import shared_preferences
 // Import Login screen
@@ -57,6 +58,13 @@ class CustomDrawer extends StatelessWidget {
                   title: Text('Privacy Policy and Terms'),
                   onTap: () {
                     Get.to(() => TermsApp());
+                  },
+                ),
+                ListTile(
+                  leading: Icon(Icons.policy),
+                  title: Text('Privacy Policy and Terms'),
+                  onTap: () {
+                    Get.to(() => RegistrationScreen());
                   },
                 ),
                 ListTile(

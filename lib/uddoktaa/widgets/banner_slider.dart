@@ -18,6 +18,7 @@ class BannerSlider extends StatelessWidget {
     return CarouselSlider(
       options: CarouselOptions(
         height: 130.0,
+        
         autoPlay: true,
         enlargeCenterPage: false,
         viewportFraction: 0.9,
@@ -45,7 +46,7 @@ class BannerSlider extends StatelessWidget {
                 fit: StackFit.expand,
                 children: [
                   CachedNetworkImage(
-                    imageUrl: pkg.pacImageUrl,
+                    imageUrl: pkg.imageUrl,
                     fit: BoxFit.cover,
                     placeholder: (c, u) =>
                         Center(child: CircularProgressIndicator()),
@@ -63,7 +64,7 @@ class BannerSlider extends StatelessWidget {
                         children: [
                           SizedBox(height: 4),
                           Text(
-                            'মূল্য: ৳${pkg.pacTotalPrice.toStringAsFixed(0)}',
+                            'মূল্য: ৳${pkg.totalPrice.toStringAsFixed(0)}',
                             style: TextStyle(
                               color: const Color.fromARGB(255, 228, 14, 14),
                               fontSize: 14,
@@ -71,7 +72,7 @@ class BannerSlider extends StatelessWidget {
                             ),
                           ),
                           Text(
-                            'ছাড়ের পর মূল্য: ৳${pkg.pacDiscountedPrice.toStringAsFixed(0)}',
+                            'ছাড়ের পর মূল্য: ৳${pkg.discountedPrice.toStringAsFixed(0)}',
                             style: TextStyle(
                               color: const Color.fromARGB(255, 205, 22, 150),
                               fontSize: 14,

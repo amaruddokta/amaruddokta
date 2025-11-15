@@ -12,19 +12,19 @@ class SubItemScreen extends StatefulWidget {
   final String searchQuery;
 
   const SubItemScreen({
-    super.key,
+    Key? key,
     required this.categoryName,
     this.searchQuery = '',
-  });
+  }) : super(key: key);
 
   @override
   State<SubItemScreen> createState() => _SubItemScreenState();
 }
 
 class _SubItemScreenState extends State<SubItemScreen> {
-  final SupabaseClient _supabase = Supabase.instance.client;
   final CartController _cartController = Get.find<CartController>();
   final FavoriteController _favoriteController = Get.find<FavoriteController>();
+  final SupabaseClient _supabase = Supabase.instance.client;
   Map<String, int> quantities = {};
   late Future<List<Map<String, dynamic>>> _futureProducts;
 
@@ -59,30 +59,26 @@ class _SubItemScreenState extends State<SubItemScreen> {
     }
   }
 
-  // UPDATED: Now fetches category name using a JOIN
   Future<List<Map<String, dynamic>>> _fetchProducts() async {
     try {
-      final List<Map<String, dynamic>> response =
-          await _supabase.from('ponno').select('''
-            *,
-            categories (
-              categories_name
-            )
-          ''');
+      // The select() method in supabase_flutter typically returns a PostgrestResponse.
+      // However, the error message indicates that 'response' is of type PostgrestList.
+      // This suggests that the select() call might be returning the data directly,
+      // and errors are handled via exceptions.
+      final response = await _supabase.from('products').select();
 
-      final allProducts = response.map((data) {
-        return data;
-      }).toList();
+      // If 'response' is a PostgrestList, it implies the data was fetched successfully.
+      // Errors would have been thrown as exceptions and caught by the try-catch block.
+      // Therefore, we can directly cast 'response' to the expected list type.
+      final allProducts = List<Map<String, dynamic>>.from(response as List);
 
+      // Filtering logic
       final filteredProducts = allProducts.where((product) {
-        // UPDATED: Access category name from the nested 'categories' object
         final matchesCategory = widget.categoryName.isEmpty ||
-            (product['categories']?['categories_name'] ?? '')
-                    .toString()
-                    .trim() ==
+            (product['category'] ?? '').toString().trim() ==
                 widget.categoryName.trim();
 
-        final matchesSearch = (product['usernames'] ?? '')
+        final matchesSearch = (product['name'] ?? '')
             .toString()
             .toLowerCase()
             .contains(widget.searchQuery.toLowerCase());
@@ -95,24 +91,6 @@ class _SubItemScreenState extends State<SubItemScreen> {
       debugPrint('পণ্য লোড করতে সমস্যা: $e');
       return [];
     }
-  }
-
-  List<String> _getColorsList(dynamic colorsData) {
-    if (colorsData == null) return [];
-    if (colorsData is List) {
-      return colorsData.map((e) => e.toString()).toList();
-    } else if (colorsData is String) {
-      return colorsData.split(',').map((e) => e.trim()).toList();
-    }
-    return [];
-  }
-
-  List<Map<String, dynamic>> _getSizesWithDetails(dynamic sizesData) {
-    if (sizesData == null) return [];
-    if (sizesData is List) {
-      return sizesData.map((e) => e as Map<String, dynamic>).toList();
-    }
-    return [];
   }
 
   @override
@@ -175,7 +153,7 @@ class _SubItemScreenState extends State<SubItemScreen> {
       List<Map<String, dynamic>> products) {
     final Map<String, List<Map<String, dynamic>>> grouped = {};
     for (var product in products) {
-      final subItem = (product['userItem'] ?? 'Others').toString();
+      final subItem = (product['subItemName'] ?? 'Others').toString();
       grouped.putIfAbsent(subItem, () => []).add(product);
     }
     return grouped;
@@ -209,47 +187,22 @@ class _SubItemScreenState extends State<SubItemScreen> {
     );
   }
 
-  Map<String, dynamic> _getFirstSizePriceUnit(List<dynamic>? sizesData) {
-    if (sizesData == null || sizesData.isEmpty) {
-      return {};
-    }
-    return sizesData.first as Map<String, dynamic>;
-  }
-
   Widget _buildProductCard(Map<String, dynamic> product) {
-    final name = product['usernames'] ?? 'Unknown';
-    final sizes = _getSizesWithDetails(product['sizes']);
-    double displayPrice = (product['price'] ?? 0).toDouble();
-    String displayUnit =
-        product['unit']?.toString() ?? ''; // Ensure unit is string
+    final name = product['name'] ?? 'Unknown';
+    final price = (product['price'] ?? 0).toDouble();
+    final unit = product['unit'] ?? '';
+    final discount = (product['discount'] ?? 0).toInt();
+    final imageUrl = product['imageUrl'] ?? '';
+    final company = product['company'] ?? 'Unknown';
+    final details = product['details'] ?? '';
+    final stock = (product['stock'] ?? 0).toInt();
+    final subItemName = (product['subItemName'] ?? 'Others').toString();
+    final productId = product['id'] ?? name;
+    final category = product['category'] ?? widget.categoryName;
 
-    if (sizes.isNotEmpty) {
-      final firstSizeDetails = _getFirstSizePriceUnit(sizes.cast<dynamic>());
-      if (firstSizeDetails.isNotEmpty) {
-        displayPrice = (firstSizeDetails['price'] ?? 0).toDouble();
-        displayUnit =
-            firstSizeDetails['unit']?.toString() ?? ''; // Ensure unit is string
-      }
-    }
-
-    final discount = (product['userdiscounts'] ?? 0).toInt();
-    final imageUrl =
-        product['userimageUrls']?.toString() ?? ''; // Ensure imageUrl is string
-    final company = product['userscompanys'] ?? 'Unknown';
-    final details =
-        product['userdetailss']?.toString() ?? ''; // Ensure details is string
-    final stock = (product['userstocks'] ?? 0).toInt();
-    final subItemName = (product['userItem'] ?? 'Others').toString();
-    final productId =
-        product['id']?.toString() ?? name; // Ensure productId is string
-    // UPDATED: Access category name from nested object
-    final category = product['categories']?['categories_name']?.toString() ??
-        widget.categoryName; // Ensure category is string
-
-    final colors = _getColorsList(product['usercolors']);
-    final qty = quantities[productId] ?? 0;
-    final discountedPrice =
-        (displayPrice * (100 - discount) / 100).toStringAsFixed(2);
+    final colors = _getColorsList(product['colors']);
+    final qty = quantities[product['id'] ?? name] ?? 0;
+    final discountedPrice = (price * (100 - discount) / 100).toStringAsFixed(2);
 
     return Card(
       elevation: 4,
@@ -265,24 +218,25 @@ class _SubItemScreenState extends State<SubItemScreen> {
             name,
             colors,
             company,
-            displayPrice,
-            displayUnit,
+            price,
+            unit,
             category,
             subItemName,
             details,
             qty,
             product,
           ),
-          _buildProductInfo(
-              name, displayPrice, discountedPrice, discount, displayUnit),
+          Expanded(
+            child: _buildProductInfo(name, price, discountedPrice, discount),
+          ),
           Expanded(
             child: _buildOrderButton(
               product: product,
               productId: productId,
               name: name,
               company: company,
-              price: displayPrice,
-              unit: displayUnit,
+              price: price,
+              unit: unit,
               discount: discount.toDouble(),
               imageUrl: imageUrl,
               category: category,
@@ -314,8 +268,9 @@ class _SubItemScreenState extends State<SubItemScreen> {
     int qty,
     Map<String, dynamic> product,
   ) {
+    debugPrint('Image URL: $imageUrl');
     return SizedBox(
-      height: 180,
+      height: 180, // উচ্চতা বাড়িয়ে দেওয়া হয়েছে
       child: Stack(
         children: [
           GestureDetector(
@@ -326,13 +281,14 @@ class _SubItemScreenState extends State<SubItemScreen> {
                 topRight: Radius.circular(12),
               ),
               child: Container(
-                color: Colors.grey[200],
+                color: Colors.grey[200], // পটভূমির রং যোগ করা হয়েছে
                 child: Image.network(
                   imageUrl,
                   width: double.infinity,
                   height: double.infinity,
-                  fit: BoxFit.cover,
+                  fit: BoxFit.cover, // BoxFit.cover ব্যবহার করা হয়েছে
                   errorBuilder: (context, error, stackTrace) {
+                    debugPrint('Image loading error for URL $imageUrl: $error');
                     return Container(
                       color: Colors.grey[200],
                       child: const Icon(Icons.broken_image,
@@ -425,13 +381,11 @@ class _SubItemScreenState extends State<SubItemScreen> {
     double price,
     String discountedPrice,
     int discount,
-    String unit,
   ) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Text(
             name,
@@ -442,7 +396,7 @@ class _SubItemScreenState extends State<SubItemScreen> {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 0),
           Row(
             children: [
               Text(
@@ -450,17 +404,21 @@ class _SubItemScreenState extends State<SubItemScreen> {
                 style: const TextStyle(
                   color: Colors.green,
                   fontWeight: FontWeight.bold,
-                  fontSize: 14,
+                  fontSize: 12,
                 ),
               ),
               const SizedBox(width: 8),
               if (discount > 0)
-                Text(
-                  '৳${price.toStringAsFixed(2)}',
-                  style: const TextStyle(
-                    color: Colors.grey,
-                    fontSize: 12,
-                    decoration: TextDecoration.lineThrough,
+                Expanded(
+                  child: Text(
+                    '৳${price.toStringAsFixed(2)}',
+                    style: const TextStyle(
+                      color: Colors.grey,
+                      fontSize: 12,
+                      decoration: TextDecoration.lineThrough,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
             ],
@@ -487,25 +445,23 @@ class _SubItemScreenState extends State<SubItemScreen> {
     required int qty,
   }) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 5.0, vertical: 6.0),
+      padding: const EdgeInsets.symmetric(horizontal: 0.0, vertical: 0.0),
       child: stock == 0
           ? const ElevatedButton(onPressed: null, child: Text('স্টক নেই'))
           : qty == 0
               ? ElevatedButton.icon(
                   onPressed: () {
-                    final colorsData = product['usercolors'];
-                    final sizesData = product['sizes'];
+                    final colorsData = product['colors'];
+                    final sizesData = product['size'];
 
                     final bool hasColors = colorsData != null &&
                         (colorsData is List
                             ? colorsData.isNotEmpty
-                            : (colorsData?.toString() ?? '')
-                                .isNotEmpty); // Safely check string
+                            : (colorsData as String).isNotEmpty);
                     final bool hasSizes = sizesData != null &&
                         (sizesData is List
                             ? sizesData.isNotEmpty
-                            : (sizesData?.toString() ?? '')
-                                .isNotEmpty); // Safely check string
+                            : (sizesData as String).isNotEmpty);
 
                     if (hasColors || hasSizes) {
                       _navigateToProductDetails(product);
@@ -528,15 +484,15 @@ class _SubItemScreenState extends State<SubItemScreen> {
                   icon: const Icon(Icons.add_circle_outline),
                   label: FittedBox(
                     fit: BoxFit.scaleDown,
-                    child: Text('অর্ডার করুন'),
+                    child: const Text('অর্ডার করুন'),
                   ),
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 0),
                   ),
                 )
               : Builder(builder: (context) {
-                  final colorsData = product['usercolors'];
-                  final sizesData = product['sizes'];
+                  final colorsData = product['colors'];
+                  final sizesData = product['size'];
                   final bool hasColors = colorsData != null &&
                       (colorsData is List
                           ? colorsData.isNotEmpty
@@ -555,7 +511,7 @@ class _SubItemScreenState extends State<SubItemScreen> {
                           MaterialPageRoute(
                             builder: (context) => ProductDetailsScreen(
                               product: product,
-                              productId: (product['id'] ?? '').toString(),
+                              productId: product['id'] ?? '',
                             ),
                           ),
                         );
@@ -599,13 +555,22 @@ class _SubItemScreenState extends State<SubItemScreen> {
     );
   }
 
+  List<String>? _getColorsList(dynamic colorsData) {
+    if (colorsData is List) {
+      return colorsData.map((e) => e.toString()).toList();
+    } else if (colorsData is String) {
+      return colorsData.split(',').map((e) => e.trim()).toList();
+    }
+    return null;
+  }
+
   void _navigateToProductDetails(Map<String, dynamic> product) {
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => ProductDetailsScreen(
           product: product,
-          productId: (product['id'] ?? '').toString(),
+          productId: product['id'] ?? '',
         ),
       ),
     );
@@ -634,10 +599,10 @@ class _SubItemScreenState extends State<SubItemScreen> {
         price: price,
         unit: unit,
         discountPercentage: discount,
-        imageUrl: imageUrl.toString(), // Ensure imageUrl is string
+        imageUrl: imageUrl,
         category: category,
         subItemName: subItemName,
-        details: details.toString(), // Ensure details is string
+        details: details,
         isPackage: false,
         colors: colors,
       ),
@@ -657,7 +622,7 @@ class _SubItemScreenState extends State<SubItemScreen> {
     required List<String>? colors,
     required String details,
   }) {
-    setState(() => quantities[productId] = 1);
+    setState(() => quantities[name] = 1);
 
     _cartController.addItemToCart(
       CartItem(
@@ -668,10 +633,10 @@ class _SubItemScreenState extends State<SubItemScreen> {
         price: price,
         unit: unit,
         discountPercentage: discount,
-        imageUrl: imageUrl.toString(), // Ensure imageUrl is string
+        imageUrl: imageUrl,
         category: category,
         subItemName: subItemName,
-        details: details.toString(), // Ensure details is string
+        details: details,
         isPackage: false,
         colors: colors,
       ),

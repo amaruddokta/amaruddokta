@@ -30,55 +30,55 @@ class PackageProduct {
 
 class Package {
   final String id;
-  final String pacName;
-  final String pacImageUrl;
-  final double pacTotalPrice;
-  final String pacDiscountString;
-  final double pacDiscountPercentage;
-  final double pacDiscountedPrice;
-  final String pacDescription;
-  final List<PackageProduct> pacProducts;
+  final String name;
+  final String imageUrl;
+  final double totalPrice;
+  final String discountString;
+  final double discountPercentage;
+  final double discountedPrice;
+  final String description;
+  final List<PackageProduct> products;
 
   Package({
     required this.id,
-    required this.pacName,
-    required this.pacImageUrl,
-    required this.pacTotalPrice,
-    required this.pacDiscountString,
-    required this.pacDiscountPercentage,
-    required this.pacDiscountedPrice,
-    required this.pacDescription,
-    required this.pacProducts,
+    required this.name,
+    required this.imageUrl,
+    required this.totalPrice,
+    required this.discountString,
+    required this.discountPercentage,
+    required this.discountedPrice,
+    required this.description,
+    required this.products,
   });
 
   factory Package.fromJson(Map<String, dynamic> json) {
-    var productsFromJson = json['pacProducts'] as List<dynamic>? ?? [];
+    var productsFromJson = json['products'] as List<dynamic>? ?? [];
     List<PackageProduct> productList = productsFromJson
         .map((prod) => PackageProduct.fromJson(prod as Map<String, dynamic>))
         .toList();
 
     return Package(
       id: json['id'] ?? '',
-      pacName: json['pacName'] ?? '',
-      pacImageUrl: json['pacImageUrl'] ?? '',
-      pacTotalPrice: (json['pacTotalPrice'] ?? 0).toDouble(),
-      pacDiscountString: json['pacDiscountString'] ?? '',
-      pacDiscountPercentage: (json['pacDiscountPercentage'] ?? 0).toDouble(),
-      pacDiscountedPrice: (json['pacDiscountedPrice'] ?? 0).toDouble(),
-      pacDescription: json['pacDescription'] ?? '',
-      pacProducts: productList,
+      name: json['name'] ?? '',
+      imageUrl: json['imageUrl'] ?? '',
+      totalPrice: (json['totalPrice'] ?? 0).toDouble(),
+      discountString: json['discountString'] ?? '',
+      discountPercentage: (json['discountPercentage'] ?? 0).toDouble(),
+      discountedPrice: (json['discountedPrice'] ?? 0).toDouble(),
+      description: json['description'] ?? '',
+      products: productList,
     );
   }
 
   Map<String, dynamic> toJson() => {
         'id': id,
-        'pacName': pacName,
-        'pacImageUrl': pacImageUrl,
-        'pacTotalPrice': pacTotalPrice,
-        'pacDiscountString': pacDiscountString,
-        'pacDiscountPercentage': pacDiscountPercentage,
-        'pacDiscountedPrice': pacDiscountedPrice,
-        'pacDescription': pacDescription,
-        'pacProducts': pacProducts.map((p) => p.toJson()).toList(),
+        'name': name,
+        'imageUrl': imageUrl,
+        'totalPrice': totalPrice,
+        'discountString': discountString,
+        'discountPercentage': discountPercentage,
+        'discountedPrice': discountedPrice,
+        'description': description,
+        'products': products.map((p) => p.toJson()).toList(),
       };
 }

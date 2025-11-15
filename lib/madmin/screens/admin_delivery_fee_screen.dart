@@ -61,14 +61,14 @@ class _AdminDeliveryFeeScreenState extends State<AdminDeliveryFeeScreen> {
   }
 
   void _editFee(Map<String, dynamic> feeData) {
-    _selectedDivision = feeData['admin_Division'];
-    _selectedDistrict = feeData['admin_District'];
-    _selectedUpazila = feeData['admin_Upazila'];
+    _selectedDivision = feeData['division'];
+    _selectedDistrict = feeData['district'];
+    _selectedUpazila = feeData['upazila'];
 
     _divisionController.text = _selectedDivision ?? '';
     _districtController.text = _selectedDistrict ?? '';
     _upazilaController.text = _selectedUpazila ?? '';
-    _feeController.text = feeData['admin_fees'].toString();
+    _feeController.text = feeData['fee'].toString();
 
     _updateDistricts(_selectedDivision);
     _updateUpazilas(_selectedDivision, _selectedDistrict);
@@ -117,18 +117,18 @@ class _AdminDeliveryFeeScreenState extends State<AdminDeliveryFeeScreen> {
 
       if (_editingDocId == null) {
         await controller.addDeliveryFee(
-          admin_Division: division,
-          admin_District: district,
-          admin_Upazila: upazila,
-          admin_fees: fee,
+          division: division,
+          district: district,
+          upazila: upazila,
+          fee: fee,
         );
       } else {
         await controller.updateDeliveryFee(
           id: _editingDocId!,
-          admin_Division: division,
-          admin_District: district,
-          admin_Upazila: upazila,
-          admin_fees: fee,
+          division: division,
+          district: district,
+          upazila: upazila,
+          fee: fee,
         );
       }
       _clearForm();
@@ -150,7 +150,7 @@ class _AdminDeliveryFeeScreenState extends State<AdminDeliveryFeeScreen> {
               child: Column(
                 children: [
                   DropdownButtonFormField<String>(
-                    initialValue: _selectedDivision,
+                    value: _selectedDivision,
                     hint: const Text('Select Division'),
                     items: _divisions.map((String division) {
                       return DropdownMenuItem<String>(
@@ -169,7 +169,7 @@ class _AdminDeliveryFeeScreenState extends State<AdminDeliveryFeeScreen> {
                   ),
                   const SizedBox(height: 10),
                   DropdownButtonFormField<String>(
-                    initialValue: _selectedDistrict,
+                    value: _selectedDistrict,
                     hint: const Text('Select District (Optional)'),
                     items: _districts.map((String district) {
                       return DropdownMenuItem<String>(
@@ -186,7 +186,7 @@ class _AdminDeliveryFeeScreenState extends State<AdminDeliveryFeeScreen> {
                   ),
                   const SizedBox(height: 10),
                   DropdownButtonFormField<String>(
-                    initialValue: _selectedUpazila,
+                    value: _selectedUpazila,
                     hint: const Text('Select Upazila (Optional)'),
                     items: _upazilas.map((String upazila) {
                       return DropdownMenuItem<String>(
@@ -245,8 +245,8 @@ class _AdminDeliveryFeeScreenState extends State<AdminDeliveryFeeScreen> {
                       margin: const EdgeInsets.symmetric(vertical: 8),
                       child: ListTile(
                         title: Text(
-                            '${feeData['admin_Division']} > ${feeData['admin_District'] ?? 'All'} > ${feeData['admin_Upazila'] ?? 'All'}'),
-                        subtitle: Text('Fee: ${feeData['admin_fees']}'),
+                            '${feeData['division']} > ${feeData['district'] ?? 'All'} > ${feeData['upazila'] ?? 'All'}'),
+                        subtitle: Text('Fee: ${feeData['fee']}'),
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [

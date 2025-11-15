@@ -1,5 +1,5 @@
 import 'dart:io';
-import 'package:amar_uddokta/madmin/widgets/label_service.dart';
+import 'package:amar_uddokta/madmin/services/LabelService.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:universal_html/html.dart' as html;
@@ -461,7 +461,7 @@ class _OrderCardState extends State<OrderCard> {
                   englishFont: englishFont,
                 ),
                 MixedTextRenderer.render(
-                  '${labelService.getLabel('status') ?? 'Status'}: ${widget.order.getStatusText(labelService)}',
+                  '${labelService.getLabel('status') ?? 'Status'}: ${labelService.getLabel(widget.order.status) ?? widget.order.status}',
                   bengaliFont: bengaliFont,
                   englishFont: englishFont,
                 ),
