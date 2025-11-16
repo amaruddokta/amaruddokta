@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' hide User;
 import 'package:amar_uddokta/uddoktaa/models/user.dart' as AppUser;
 import 'package:amar_uddokta/uddoktaa/services/user_service.dart';
@@ -29,9 +30,9 @@ class AuthService {
     );
 
     if (res.user != null) {
-      final UserService _userService = UserService();
+      final UserService userService = UserService();
       // Check if user exists in our 'users' table, if not, create one
-      AppUser.User? appUser = await _userService.getUserById(res.user!.id);
+      AppUser.User? appUser = await userService.getUserById(res.user!.id);
       if (appUser == null) {
         // Create a new AppUser.User based on Supabase auth user data
         appUser = AppUser.User(
@@ -44,12 +45,10 @@ class AuthService {
           district: '',
           upazila: '',
           village: '',
-          createdAt: res.user!.createdAt != null
-              ? DateTime.parse(res.user!.createdAt!)
-              : null,
+          createdAt: DateTime.parse(res.user!.createdAt),
           status: 'pending', // Default status
         );
-        await _userService.addUser(appUser);
+        await userService.addUser(appUser);
       }
       return appUser;
     }
@@ -70,9 +69,7 @@ class AuthService {
         district: '',
         upazila: '',
         village: '',
-        createdAt: supabaseUser.createdAt != null
-            ? DateTime.parse(supabaseUser.createdAt!)
-            : null,
+        createdAt: DateTime.parse(supabaseUser.createdAt),
         status: 'pending',
       );
     }
@@ -89,15 +86,27 @@ class AuthService {
     String? email,
     String? phoneNumber,
   }) async {
-    final AuthResponse res = await _client.auth.signInWithIdToken(
-      provider: OAuthProvider.google,
-      idToken: idToken,
-    );
+    try {
+      debugPrint("Signing in to Supabase with Google ID token...");
 
-    if (res.user != null) {
-      final UserService _userService = UserService();
-      AppUser.User? appUser = await _userService.getUserById(res.user!.id);
+      final AuthResponse res = await _client.auth.signInWithIdToken(
+        provider: OAuthProvider.google,
+        idToken: idToken,
+      );
+
+      if (res.user == null) {
+        debugPrint("Failed to get user from Supabase after Google sign-in");
+        throw Exception("Failed to authenticate with Supabase");
+      }
+
+      debugPrint(
+          "Successfully authenticated with Supabase. User ID: ${res.user!.id}");
+
+      final UserService userService = UserService();
+      AppUser.User? appUser = await userService.getUserById(res.user!.id);
+
       if (appUser == null) {
+        debugPrint("Creating new user in database...");
         appUser = AppUser.User(
           id: res.user!.id,
           name:
@@ -109,23 +118,41 @@ class AuthService {
           district: '',
           upazila: '',
           village: '',
-          createdAt: res.user!.createdAt != null
-              ? DateTime.parse(res.user!.createdAt!)
-              : null,
+          createdAt: DateTime.parse(res.user!.createdAt),
           status: 'pending',
         );
-        await _userService.addUser(appUser);
+
+        try {
+          await userService.addUser(appUser);
+          debugPrint("Successfully created new user in database");
+        } catch (e) {
+          debugPrint("Failed to create user in database: $e");
+          throw Exception("Failed to create user in database: $e");
+        }
       } else {
+        debugPrint("Updating existing user in database...");
         // Update existing user with latest info from Google if needed
         appUser = appUser.copyWith(
           name: displayName ?? appUser.name,
           email: email ?? appUser.email,
           phone: phoneNumber ?? appUser.phone,
         );
-        await _userService.updateUser(appUser);
+
+        try {
+          await userService.updateUser(appUser);
+          debugPrint("Successfully updated user in database");
+        } catch (e) {
+          debugPrint("Failed to update user in database: $e");
+          // Don't throw here, as the user is already authenticated
+        }
       }
       return appUser;
+    } on AuthException catch (e) {
+      debugPrint("Supabase AuthException: ${e.message}");
+      throw Exception("Authentication failed: ${e.message}");
+    } catch (e) {
+      debugPrint("Unexpected error during Google sign-in: $e");
+      throw Exception("Unexpected error: $e");
     }
-    return null;
   }
 }

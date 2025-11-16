@@ -94,15 +94,15 @@ dev_dependencies:
   esc_pos_printer_plus: ^0.1.1
 
 flutter_native_splash:
-  image: assets/image/AMAR.mp4
-  branding: assets/image/amarUddokta.png
+  image: assets/image/amar-Uddokta.png
+  branding: assets/image/amar-Uddokta.png
   android_gravity: center
   fullscreen: true
 
 flutter_icons:
   android: true
   ios: true
-  image_path: "assets/image/amarUddokta.png"
+  image_path: "assets/image/amar-Uddokta.png"
 
 flutter:
   uses-material-design: true

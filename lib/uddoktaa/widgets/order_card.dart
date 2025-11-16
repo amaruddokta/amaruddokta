@@ -815,7 +815,7 @@ class _OrderCardState extends State<OrderCard> {
                           pw.Padding(
                             padding: const pw.EdgeInsets.all(5),
                             child: MixedTextRenderer.render(
-                              '৳${item['total']}',
+                              '${item['total']}',
                               style: pw.TextStyle(
                                 fontWeight: pw.FontWeight.bold,
                               ),
@@ -879,7 +879,7 @@ class _OrderCardState extends State<OrderCard> {
                       englishFont: englishFont,
                     ),
                     MixedTextRenderer.render(
-                      '৳${widget.order.deliveryCharge}',
+                      '${widget.order.deliveryCharge}',
                       bengaliFont: bengaliFont,
                       englishFont: englishFont,
                     ),
@@ -899,7 +899,7 @@ class _OrderCardState extends State<OrderCard> {
                       englishFont: englishBoldFont,
                     ),
                     MixedTextRenderer.render(
-                      '৳${widget.order.grandTotal}',
+                      '${widget.order.grandTotal}',
                       style: pw.TextStyle(
                         fontWeight: pw.FontWeight.bold,
                         fontSize: 18,

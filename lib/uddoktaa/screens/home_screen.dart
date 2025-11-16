@@ -6,7 +6,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:amar_uddokta/uddoktaa/widgets/background_container.dart';
 import 'package:amar_uddokta/uddoktaa/screens/sub_item_screen.dart';
 import 'package:amar_uddokta/uddoktaa/screens/cart_screen.dart';
-import 'package:amar_uddokta/uddoktaa/widgets/banner_slider.dart';
 // Corrected import path
 import 'package:amar_uddokta/uddoktaa/widgets/custom_drawer.dart';
 
@@ -23,8 +22,8 @@ import 'package:marquee/marquee.dart';
 import 'package:curved_navigation_bar/curved_navigation_bar.dart';
 import 'package:amar_uddokta/uddoktaa/screens/my_orders_screen.dart';
 import 'package:amar_uddokta/uddoktaa/screens/notification_screen.dart';
-import 'package:amar_uddokta/uddoktaa/widgets/offer_widget.dart'; // Corrected import
-import 'package:amar_uddokta/uddoktaa/screens/real_time_offer_screen.dart'; // Added import for RealTimeOfferScreen
+// Corrected import
+// Added import for RealTimeOfferScreen
 import 'package:amar_uddokta/uddoktaa/screens/search_results_screen.dart'; // Import SearchResultsScreen
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 
@@ -169,13 +168,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             color: Colors.green,
             onPressed: _makeDynamicPhoneCall,
           ),
-          const SizedBox(height: 8),
+          /* const SizedBox(height: 8),
           BottomIcon(
             icon: Icons.message,
             label: 'Chat',
             color: Colors.green,
             onPressed: () => Get.to(() => const ChatScreen()),
-          ),
+          ),*/
         ],
       ),
     );

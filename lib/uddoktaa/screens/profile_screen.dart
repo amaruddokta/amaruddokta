@@ -8,6 +8,8 @@ import 'package:path/path.dart' as path;
 import '../data/location_data.dart';
 import '../models/user.dart' as MyUser;
 import '../services/user_prefs.dart';
+import 'package:amar_uddokta/uddoktaa/screens/registration_screen.dart';
+import 'package:amar_uddokta/madmin/services/supabase_service.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -55,30 +57,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
           .single();
 
       final data = response;
-      if (data != null) {
-        _villageCtrl.text = data['village'] ?? '';
-        _wardCtrl.text = data['ward'] ?? '';
-        _houseCtrl.text = data['house'] ?? '';
-        _roadCtrl.text = data['road'] ?? '';
-        _division = data['division'];
-        _district = data['district'];
-        _upazila = data['upazila'];
-        _union = data['union'];
+      _villageCtrl.text = data['village'] ?? '';
+      _wardCtrl.text = data['ward'] ?? '';
+      _houseCtrl.text = data['house'] ?? '';
+      _roadCtrl.text = data['road'] ?? '';
+      _division = data['division'];
+      _district = data['district'];
+      _upazila = data['upazila'];
+      _union = data['union'];
 
-        _referCode = data['refer_code'] ?? '';
-        final dynamic balance = data['refer_balance'];
-        if (balance is String) {
-          _referBalance = double.tryParse(balance) ?? 0.0;
-        } else if (balance is num) {
-          _referBalance = balance.toDouble();
-        } else {
-          _referBalance = 0.0;
-        }
+      _referCode = data['refer_code'] ?? '';
+      final dynamic balance = data['refer_balance'];
+      if (balance is String) {
+        _referBalance = double.tryParse(balance) ?? 0.0;
+      } else if (balance is num) {
+        _referBalance = balance.toDouble();
+      } else {
+        _referBalance = 0.0;
       }
 
-      if (data != null) {
-        _profileImageUrl = data['imageUrl'];
-      }
+      _profileImageUrl = data['imageUrl'];
 
       if (_profileImageUrl != null && _profileImageUrl!.isNotEmpty) {
         // No need to set _imageFile, NetworkImage will handle it
@@ -248,43 +246,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     if (confirmDelete == true) {
       try {
-        // Delete profile image from Supabase Storage
-        if (_profileImageUrl != null && _profileImageUrl!.isNotEmpty) {
-          await supabase_flutter.Supabase.instance.client.storage
-              .from('profile_images')
-              .remove([_profileImageUrl!]);
+        final currentUser =
+            supabase_flutter.Supabase.instance.client.auth.currentUser;
+        if (currentUser != null) {
+          await SupabaseService().deleteUser(currentUser.id!);
+          await supabase_flutter.Supabase.instance.client.auth.signOut();
+          // Clear local user preferences
+          await UserPrefs.clearUser();
+          // After successful deletion, navigate to the registration screen
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (context) => RegistrationScreen()),
+            (Route<dynamic> route) => false,
+          );
         }
-
-        // Delete user document from Supabase Database
-        await supabase_flutter.Supabase.instance.client
-            .from('users')
-            .delete()
-            .eq('id', _userId!);
-
-        // Delete Supabase Authentication user
-        await supabase_flutter.Supabase.instance.client.auth.admin
-            .deleteUser(_userId!);
-
-        // Clear local user preferences
-        await UserPrefs.clearUser();
-
-        Get.snackbar(
-          'সফল',
-          'অ্যাকাউন্ট সফলভাবে ডিলিট হয়েছে।',
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.green.shade100,
-          colorText: Colors.green.shade800,
-        );
-        Get.offAllNamed('/register'); // Navigate to registration screen
       } catch (e) {
-        Get.snackbar(
-          'ত্রুটি',
-          'অ্যাকাউন্ট ডিলিট ব্যর্থ হয়েছে: $e',
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.red.shade100,
-          colorText: Colors.red.shade800,
-          duration: const Duration(seconds: 5),
-        );
+        // As per requirement: "কোন এরর ম্যাসেজ যেন না দেখায়"
+        debugPrint('Error deleting account: $e');
       }
     }
   }
@@ -380,104 +357,106 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
               const SizedBox(height: 20),
 
+              // /*
               // Referral Information Card
-              Container(
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.9),
-                  borderRadius: BorderRadius.circular(15),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.grey.withOpacity(0.2),
-                      spreadRadius: 1,
-                      blurRadius: 5,
-                      offset: const Offset(0, 3),
-                    ),
-                  ],
-                ),
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.card_giftcard,
-                          color: Colors.teal.shade400,
-                          size: 20,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'রেফারেল তথ্য',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.teal.shade800,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 15),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'রেফারেল কোড:',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey.shade700,
-                          ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 5),
-                          decoration: BoxDecoration(
-                            color: Colors.teal.shade50,
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: Colors.teal.shade200),
-                          ),
-                          child: Text(
-                            _referCode,
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: Colors.teal.shade700,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'রেফারেল ব্যালেন্স:',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey.shade700,
-                          ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 5),
-                          decoration: BoxDecoration(
-                            color: Colors.teal.shade50,
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: Colors.teal.shade200),
-                          ),
-                          child: Text(
-                            '৳${_referBalance.toStringAsFixed(2)}',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: Colors.teal.shade700,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 20),
+              // Container(
+              //   decoration: BoxDecoration(
+              //     color: Colors.white.withOpacity(0.9),
+              //     borderRadius: BorderRadius.circular(15),
+              //     boxShadow: [
+              //       BoxShadow(
+              //         color: Colors.grey.withOpacity(0.2),
+              //         spreadRadius: 1,
+              //         blurRadius: 5,
+              //         offset: const Offset(0, 3),
+              //       ),
+              //     ],
+              //   ),
+              //   padding: const EdgeInsets.all(16),
+              //   child: Column(
+              //     crossAxisAlignment: CrossAxisAlignment.start,
+              //     children: [
+              //       Row(
+              //         children: [
+              //           Icon(
+              //             Icons.card_giftcard,
+              //             color: Colors.teal.shade400,
+              //             size: 20,
+              //           ),
+              //           const SizedBox(width: 8),
+              //           Text(
+              //             'রেফারেল তথ্য',
+              //             style: TextStyle(
+              //               fontSize: 18,
+              //               fontWeight: FontWeight.bold,
+              //               color: Colors.teal.shade800,
+              //             ),
+              //           ),
+              //         ],
+              //       ),
+              //       const SizedBox(height: 15),
+              //       Row(
+              //         mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              //         children: [
+              //           Text(
+              //             'রেফারেল কোড:',
+              //             style: TextStyle(
+              //               fontSize: 14,
+              //               color: Colors.grey.shade700,
+              //             ),
+              //           ),
+              //           Container(
+              //             padding: const EdgeInsets.symmetric(
+              //                 horizontal: 10, vertical: 5),
+              //             decoration: BoxDecoration(
+              //               color: Colors.teal.shade50,
+              //               borderRadius: BorderRadius.circular(8),
+              //               border: Border.all(color: Colors.teal.shade200),
+              //             ),
+              //             child: Text(
+              //               _referCode,
+              //               style: TextStyle(
+              //                 fontWeight: FontWeight.bold,
+              //                 color: Colors.teal.shade700,
+              //               ),
+              //             ),
+              //           ),
+              //         ],
+              //       ),
+              //       const SizedBox(height: 12),
+              //       Row(
+              //         mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              //         children: [
+              //           Text(
+              //             'রেফারেল ব্যালেন্স:',
+              //             style: TextStyle(
+              //               fontSize: 14,
+              //               color: Colors.grey.shade700,
+              //             ),
+              //           ),
+              //           Container(
+              //             padding: const EdgeInsets.symmetric(
+              //                 horizontal: 10, vertical: 5),
+              //             decoration: BoxDecoration(
+              //               color: Colors.teal.shade50,
+              //               borderRadius: BorderRadius.circular(8),
+              //               border: Border.all(color: Colors.teal.shade200),
+              //             ),
+              //             child: Text(
+              //               '৳${_referBalance.toStringAsFixed(2)}',
+              //               style: TextStyle(
+              //                 fontWeight: FontWeight.bold,
+              //                 color: Colors.teal.shade700,
+              //               ),
+              //             ),
+              //           ),
+              //         ],
+              //       ),
+              //     ],
+              //   ),
+              // ),
+              // const SizedBox(height: 20),
+              // */
 
               // Form Section
               Container(
@@ -798,7 +777,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     required void Function(String?)? onChanged,
   }) {
     return DropdownButtonFormField<String>(
-      value: value,
+      initialValue: value,
       decoration: InputDecoration(
         labelText: label,
         labelStyle: TextStyle(

@@ -8,7 +8,7 @@ import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:video_compress/video_compress.dart';
 
 class AdminSubItemPanel extends StatefulWidget {
-  const AdminSubItemPanel({Key? key}) : super(key: key);
+  const AdminSubItemPanel({super.key});
 
   @override
   State<AdminSubItemPanel> createState() => _AdminSubItemPanelState();
@@ -411,7 +411,7 @@ class _AdminSubItemPanelState extends State<AdminSubItemPanel> {
                                 return const Text('Something went wrong');
                               }
                               return DropdownButtonFormField<String>(
-                                value: selectedAddCategory.isNotEmpty
+                                initialValue: selectedAddCategory.isNotEmpty
                                     ? selectedAddCategory
                                     : null,
                                 items: snapshot.data!.map((category) {
@@ -761,7 +761,7 @@ class _AdminSubItemPanelState extends State<AdminSubItemPanel> {
                             return const Text('Something went wrong');
                           }
                           return DropdownButtonFormField<String>(
-                            value: selectedAddCategory.isNotEmpty
+                            initialValue: selectedAddCategory.isNotEmpty
                                 ? selectedAddCategory
                                 : null,
                             items: snapshot.data!.map((category) {
@@ -1149,7 +1149,9 @@ class _AdminSubItemPanelState extends State<AdminSubItemPanel> {
 
                 final products = snapshot.data?.where((product) {
                       if (selectedCategory != "সব ক্যাটাগরি" &&
-                          product['category'] != selectedCategory) return false;
+                          product['category'] != selectedCategory) {
+                        return false;
+                      }
                       return product['name']?.toString().toLowerCase().contains(
                                 searchController.text.toLowerCase(),
                               ) ??

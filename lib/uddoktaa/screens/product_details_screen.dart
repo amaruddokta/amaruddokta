@@ -5,7 +5,6 @@ import 'package:amar_uddokta/uddoktaa/models/cart_item.dart';
 import 'package:amar_uddokta/uddoktaa/widgets/background_container.dart';
 import 'package:get/get.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:amar_uddokta/uddoktaa/screens/favorite_screen.dart';
 import 'package:amar_uddokta/uddoktaa/screens/zoomable_image_screen.dart';
 import 'package:amar_uddokta/uddoktaa/widgets/comment_section.dart';
 

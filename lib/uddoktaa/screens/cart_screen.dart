@@ -77,7 +77,7 @@ class _CartScreenState extends State<CartScreen> {
       _loadUserData().then((_) {
         debugPrint('CartScreen _loadUserData completed');
         _updateDeliveryFee();
-        _loadUserReferBalance();
+        // _loadUserReferBalance();
       });
     });
   }
@@ -150,117 +150,117 @@ class _CartScreenState extends State<CartScreen> {
     }
   }
 
-  Future<void> _loadUserReferBalance() async {
-    if (_isUddokta.value) {
-      return; // উদ্যোক্তাদের জন্য রেফার ব্যালেন্স লোড করা হবে না
-    }
+  // Future<void> _loadUserReferBalance() async {
+  //   if (_isUddokta.value) {
+  //     return; // উদ্যোক্তাদের জন্য রেফার ব্যালেন্স লোড করা হবে না
+  //   }
 
-    final user = Supabase.instance.client.auth.currentUser;
-    if (user != null) {
-      final userDoc = await Supabase.instance.client
-          .from('users')
-          .select('referBalance')
-          .eq('id', user.id)
-          .maybeSingle();
-      if (userDoc == null) {
-        _userReferBalance.value = 0.0;
-        return;
-      }
-      final data = userDoc;
-      final dynamic balance = data['referBalance'];
-      if (balance is String) {
-        _userReferBalance.value = double.tryParse(balance) ?? 0.0;
-      } else if (balance is num) {
-        _userReferBalance.value = balance.toDouble();
-      } else {
-        _userReferBalance.value = 0.0;
-      }
-    }
-  }
+  //   final user = Supabase.instance.client.auth.currentUser;
+  //   if (user != null) {
+  //     final userDoc = await Supabase.instance.client
+  //         .from('users')
+  //         .select('referBalance')
+  //         .eq('id', user.id)
+  //         .maybeSingle();
+  //     if (userDoc == null) {
+  //       _userReferBalance.value = 0.0;
+  //       return;
+  //     }
+  //     final data = userDoc;
+  //     final dynamic balance = data['referBalance'];
+  //     if (balance is String) {
+  //       _userReferBalance.value = double.tryParse(balance) ?? 0.0;
+  //     } else if (balance is num) {
+  //       _userReferBalance.value = balance.toDouble();
+  //     } else {
+  //       _userReferBalance.value = 0.0;
+  //     }
+  //   }
+  // }
 
-  Future<void> _applyReferCode() async {
-    if (_isUddokta.value) return; // উদ্যোক্তাদের জন্য রেফার কোড প্রযোজ্য নয়
+  // Future<void> _applyReferCode() async {
+  //   if (_isUddokta.value) return; // উদ্যোক্তাদের জন্য রেফার কোড প্রযোজ্য নয়
 
-    final referCode = _referCodeController.text.trim();
-    if (referCode.isEmpty) {
-      _isReferCodeValid.value = false;
-      Get.snackbar('ত্রুটি', 'রেফারেল কোড দিন',
-          snackPosition: SnackPosition.BOTTOM);
-      return;
-    }
+  //   final referCode = _referCodeController.text.trim();
+  //   if (referCode.isEmpty) {
+  //     _isReferCodeValid.value = false;
+  //     Get.snackbar('ত্রুটি', 'রেফারেল কোড দিন',
+  //         snackPosition: SnackPosition.BOTTOM);
+  //     return;
+  //   }
 
-    if (referCode == _userReferCode.value) {
-      _isReferCodeValid.value = false;
-      Get.snackbar('ত্রুটি', 'আপনি নিজের রেফারেল কোড ব্যবহার করতে পারবেন না',
-          snackPosition: SnackPosition.BOTTOM);
-      return;
-    }
+  //   if (referCode == _userReferCode.value) {
+  //     _isReferCodeValid.value = false;
+  //     Get.snackbar('ত্রুটি', 'আপনি নিজের রেফারেল কোড ব্যবহার করতে পারবেন না',
+  //         snackPosition: SnackPosition.BOTTOM);
+  //     return;
+  //   }
 
-    final response = await Supabase.instance.client
-        .from('users')
-        .select()
-        .eq('referCode', referCode);
+  //   final response = await Supabase.instance.client
+  //       .from('users')
+  //       .select()
+  //       .eq('referCode', referCode);
 
-    if (response.isEmpty) {
-      _isReferCodeValid.value = false;
-      Get.snackbar('ত্রুটি', 'অবৈধ রেফারেল কোড',
-          snackPosition: SnackPosition.BOTTOM);
-      return;
-    }
+  //   if (response.isEmpty) {
+  //     _isReferCodeValid.value = false;
+  //     Get.snackbar('ত্রুটি', 'অবৈধ রেফারেল কোড',
+  //         snackPosition: SnackPosition.BOTTOM);
+  //     return;
+  //   }
 
-    final currentUser = Supabase.instance.client.auth.currentUser;
-    if (currentUser != null && response.first['id'] == currentUser.id) {
-      _isReferCodeValid.value = false;
-      Get.snackbar('ত্রুটি', 'আপনি নিজের রেফারেল কোড ব্যবহার করতে পারবেন না',
-          snackPosition: SnackPosition.BOTTOM);
-      return;
-    }
+  //   final currentUser = Supabase.instance.client.auth.currentUser;
+  //   if (currentUser != null && response.first['id'] == currentUser.id) {
+  //     _isReferCodeValid.value = false;
+  //     Get.snackbar('ত্রুটি', 'আপনি নিজের রেফারেল কোড ব্যবহার করতে পারবেন না',
+  //         snackPosition: SnackPosition.BOTTOM);
+  //     return;
+  //   }
 
-    final items = cartController.cartItems;
-    final total = items.fold<double>(0, (sum, item) {
-      final discountedPrice =
-          item.price * (100 - item.discountPercentage) / 100;
-      return sum + (discountedPrice * item.quantity);
-    });
+  //   final items = cartController.cartItems;
+  //   final total = items.fold<double>(0, (sum, item) {
+  //     final discountedPrice =
+  //         item.price * (100 - item.discountPercentage) / 100;
+  //     return sum + (discountedPrice * item.quantity);
+  //   });
 
-    double bonus = 0.0;
-    if (total >= 400 && total < 500) {
-      bonus = 5.0;
-    } else if (total >= 500 && total < 1000) {
-      bonus = 7.0;
-    } else if (total >= 1000 && total < 2000) {
-      bonus = 9.0;
-    } else if (total >= 2000) {
-      bonus = 11.0;
-    }
+  //   double bonus = 0.0;
+  //   if (total >= 400 && total < 500) {
+  //     bonus = 5.0;
+  //   } else if (total >= 500 && total < 1000) {
+  //     bonus = 7.0;
+  //   } else if (total >= 1000 && total < 2000) {
+  //     bonus = 9.0;
+  //   } else if (total >= 2000) {
+  //     bonus = 11.0;
+  //   }
 
-    if (bonus > 0) {
-      final refererId = response.first['id'];
-      final refererData = response.first;
-      final dynamic balance = refererData['referBalance'];
-      double currentBalance = 0.0;
-      if (balance is String) {
-        currentBalance = double.tryParse(balance) ?? 0.0;
-      } else if (balance is num) {
-        currentBalance = balance.toDouble();
-      }
+  //   if (bonus > 0) {
+  //     final refererId = response.first['id'];
+  //     final refererData = response.first;
+  //     final dynamic balance = refererData['referBalance'];
+  //     double currentBalance = 0.0;
+  //     if (balance is String) {
+  //       currentBalance = double.tryParse(balance) ?? 0.0;
+  //     } else if (balance is num) {
+  //       currentBalance = balance.toDouble();
+  //     }
 
-      await Supabase.instance.client.from('users').update({
-        'referBalance': currentBalance + bonus,
-      }).eq('id', refererId);
+  //     await Supabase.instance.client.from('users').update({
+  //       'referBalance': currentBalance + bonus,
+  //     }).eq('id', refererId);
 
-      _isReferCodeValid.value = true;
-      _currentRefererId.value = refererId;
-      _currentBonusGivenToReferrer.value = bonus;
+  //     _isReferCodeValid.value = true;
+  //     _currentRefererId.value = refererId;
+  //     _currentBonusGivenToReferrer.value = bonus;
 
-      Get.snackbar('সফল', 'রেফারেল কোড প্রয়োগ করা হয়েছে',
-          snackPosition: SnackPosition.BOTTOM);
-    } else {
-      _isReferCodeValid.value = false;
-      Get.snackbar('ত্রুটি', 'এই অর্ডারের জন্য রেফারেল বোনাস প্রয়োজ্য নয়',
-          snackPosition: SnackPosition.BOTTOM);
-    }
-  }
+  //     Get.snackbar('সফল', 'রেফারেল কোড প্রয়োগ করা হয়েছে',
+  //         snackPosition: SnackPosition.BOTTOM);
+  //   } else {
+  //     _isReferCodeValid.value = false;
+  //     Get.snackbar('ত্রুটি', 'এই অর্ডারের জন্য রেফারেল বোনাস প্রয়োজ্য নয়',
+  //         snackPosition: SnackPosition.BOTTOM);
+  //   }
+  // }
 
   Future<void> _updateDeliveryFee() async {
     // Just trigger a rebuild
@@ -329,46 +329,46 @@ class _CartScreenState extends State<CartScreen> {
   }
 
   double _calculateDiscountedTotal(double total) {
-    if (_isUddokta.value) {
-      return 0.0; // উদ্যোক্তাদের জন্য ডিসকাউন্ট প্রযোজ্য নয়
-    }
+    // if (_isUddokta.value) {
+    //   return 0.0; // উদ্যোক্তাদের জন্য ডিসকাউন্ট প্রযোজ্য নয়
+    // }
 
-    if (_useReferBalance.value && _userReferBalance.value > 0) {
-      return total > _userReferBalance.value
-          ? total - _userReferBalance.value
-          : 0;
-    }
+    // if (_useReferBalance.value && _userReferBalance.value > 0) {
+    //   return total > _userReferBalance.value
+    //       ? total - _userReferBalance.value
+    //       : 0;
+    // }
     return total;
   }
 
-  Future<void> _updateUserReferBalance(double usedAmount) async {
-    if (_isUddokta.value || usedAmount <= 0) {
-      return; // উদ্যোক্তাদের জন্য রেফার ব্যালেন্স আপডেট প্রযোজ্য নয়
-    }
+  // Future<void> _updateUserReferBalance(double usedAmount) async {
+  //   if (_isUddokta.value || usedAmount <= 0) {
+  //     return; // উদ্যোক্তাদের জন্য রেফার ব্যালেন্স আপডেট প্রযোজ্য নয়
+  //   }
 
-    final user = Supabase.instance.client.auth.currentUser;
-    if (user != null) {
-      final userDoc = await Supabase.instance.client
-          .from('users')
-          .select('referBalance')
-          .eq('id', user.id)
-          .maybeSingle();
-      if (userDoc == null) return;
-      final data = userDoc;
-      final dynamic balance = data['referBalance'];
-      double currentBalance = 0.0;
-      if (balance is String) {
-        currentBalance = double.tryParse(balance) ?? 0.0;
-      } else if (balance is num) {
-        currentBalance = balance.toDouble();
-      }
-      final newBalance = currentBalance - usedAmount;
+  //   final user = Supabase.instance.client.auth.currentUser;
+  //   if (user != null) {
+  //     final userDoc = await Supabase.instance.client
+  //         .from('users')
+  //         .select('referBalance')
+  //         .eq('id', user.id)
+  //         .maybeSingle();
+  //     if (userDoc == null) return;
+  //     final data = userDoc;
+  //     final dynamic balance = data['referBalance'];
+  //     double currentBalance = 0.0;
+  //     if (balance is String) {
+  //       currentBalance = double.tryParse(balance) ?? 0.0;
+  //     } else if (balance is num) {
+  //       currentBalance = balance.toDouble();
+  //     }
+  //     final newBalance = currentBalance - usedAmount;
 
-      await Supabase.instance.client.from('users').update({
-        'referBalance': newBalance > 0 ? newBalance : 0,
-      }).eq('id', user.id);
-    }
-  }
+  //     await Supabase.instance.client.from('users').update({
+  //       'referBalance': newBalance > 0 ? newBalance : 0,
+  //     }).eq('id', user.id);
+  //   }
+  // }
 
   Future<void> _placeOrder(
       {required String orderId, required String paymentStatus}) async {
@@ -464,11 +464,11 @@ class _CartScreenState extends State<CartScreen> {
       trxId: '',
       userPaymentNumber: '',
       cartItems: cartController.cartItems,
-      referCode: _referCodeController.text.trim(),
-      useReferBalance: _useReferBalance.value,
-      referBalanceUsed: usedReferBalance,
-      refererId: _currentRefererId.value,
-      bonusGivenToReferrer: _currentBonusGivenToReferrer.value,
+      // referCode: _referCodeController.text.trim(),
+      // useReferBalance: _useReferBalance.value,
+      // referBalanceUsed: usedReferBalance,
+      // refererId: _currentRefererId.value,
+      // bonusGivenToReferrer: _currentBonusGivenToReferrer.value,
     );
 
     _specialMessageController.clear();
@@ -550,7 +550,7 @@ class _CartScreenState extends State<CartScreen> {
             _houseController.text = registrationData['house'] ?? '';
             _roadController.text = registrationData['road'] ?? '';
             _updateDeliveryFee();
-            _loadUserReferBalance();
+            // _loadUserReferBalance();
 
             // এখন ইউজার রেজিস্টার্ড, তাই সরাসরি অর্ডার প্লেস করার চেষ্টা করুন
             debugPrint(
@@ -902,62 +902,63 @@ class _CartScreenState extends State<CartScreen> {
 
   Widget _buildSpecialMessageAndReferSection() {
     // উদ্যোক্তা কিনা চেক করা হল
-    if (_isUddokta.value) {
-      return Container(); // উদ্যোক্তাদের জন্য রেফার সেকশন দেখাবে না
-    }
+    // if (_isUddokta.value) {
+    //   return Container(); // উদ্যোক্তাদের জন্য রেফার সেকশন দেখাবে না
+    // }
 
-    return Container(
-      margin: const EdgeInsets.only(top: 16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (!_useReferBalance.value) ...[
-            const Text(
-              'রেফারেল কোড',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Obx(() => TextFormField(
-                  controller: _referCodeController,
-                  decoration: InputDecoration(
-                    hintText: 'রেফারেল কোড লিখুন...',
-                    border: OutlineInputBorder(
-                      borderSide: BorderSide(
-                        color:
-                            _isReferCodeValid.value ? Colors.grey : Colors.red,
-                      ),
-                    ),
-                    errorText:
-                        _isReferCodeValid.value ? null : 'অবৈধ রেফারেল কোড',
-                  ),
-                  onChanged: (value) {
-                    _isReferCodeValid.value = true;
-                  },
-                )),
-            const SizedBox(height: 16),
-          ],
-          Row(
-            children: [
-              Checkbox(
-                value: _useReferBalance.value,
-                onChanged: (value) {
-                  _useReferBalance.value = value ?? false;
-                },
-              ),
-              const Text('রেফারেল ব্যালেন্স ব্যবহার করুন'),
-            ],
-          ),
-          if (_useReferBalance.value)
-            Text(
-              'আপনার রেফারেল ব্যালেন্স: ৳${_userReferBalance.value.toStringAsFixed(2)}',
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-        ],
-      ),
-    );
+    // return Container(
+    //   margin: const EdgeInsets.only(top: 16.0),
+    //   child: Column(
+    //     crossAxisAlignment: CrossAxisAlignment.start,
+    //     children: [
+    //       if (!_useReferBalance.value) ...[
+    //         const Text(
+    //           'রেফারেল কোড',
+    //           style: TextStyle(
+    //             fontSize: 16,
+    //             fontWeight: FontWeight.bold,
+    //           ),
+    //         ),
+    //         const SizedBox(height: 8),
+    //         Obx(() => TextFormField(
+    //               controller: _referCodeController,
+    //               decoration: InputDecoration(
+    //                 hintText: 'রেফারেল কোড লিখুন...',
+    //                 border: OutlineInputBorder(
+    //                   borderSide: BorderSide(
+    //                     color:
+    //                         _isReferCodeValid.value ? Colors.grey : Colors.red,
+    //                   ),
+    //                 ),
+    //                 errorText:
+    //                     _isReferCodeValid.value ? null : 'অবৈধ রেফারেল কোড',
+    //               ),
+    //               onChanged: (value) {
+    //                 _isReferCodeValid.value = true;
+    //               },
+    //             )),
+    //         const SizedBox(height: 16),
+    //       ],
+    //       Row(
+    //         children: [
+    //           Checkbox(
+    //             value: _useReferBalance.value,
+    //             onChanged: (value) {
+    //               _useReferBalance.value = value ?? false;
+    //             },
+    //           ),
+    //           const Text('রেফারেল ব্যালেন্স ব্যবহার করুন'),
+    //         ],
+    //       ),
+    //       if (_useReferBalance.value)
+    //         Text(
+    //           'আপনার রেফারেল ব্যালেন্স: ৳${_userReferBalance.value.toStringAsFixed(2)}',
+    //           style: const TextStyle(fontWeight: FontWeight.bold),
+    //         ),
+    //     ],
+    //   ),
+    // );
+    return Container();
   }
 
   Widget _buildPaymentSection() {

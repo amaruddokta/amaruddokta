@@ -148,14 +148,14 @@ class _QuranHomePageState extends State<QuranHomePage> {
 
   /// Page Jump dialog
   void _showPageJumpDialog() {
-    final TextEditingController controller = TextEditingController();
+    final TextEditingController _controller = TextEditingController();
 
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text("Go to Page"),
         content: TextField(
-          controller: controller,
+          controller: _controller,
           keyboardType: TextInputType.number,
           decoration: const InputDecoration(
             hintText: "Enter page number (1–604)",
@@ -168,7 +168,7 @@ class _QuranHomePageState extends State<QuranHomePage> {
           ),
           ElevatedButton(
             onPressed: () {
-              final page = int.tryParse(controller.text.trim());
+              final page = int.tryParse(_controller.text.trim());
               if (page != null && page > 0 && page <= totalPagesCount) {
                 _pageController.jumpToPage(page - 1);
                 Navigator.pop(context);

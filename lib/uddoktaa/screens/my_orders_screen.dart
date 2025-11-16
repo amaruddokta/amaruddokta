@@ -184,6 +184,7 @@ class MyOrdersScreen extends StatelessWidget {
                               child: Row(
                                 mainAxisAlignment: MainAxisAlignment.end,
                                 children: [
+                                  /*
                                   if (status == 'pending')
                                     TextButton(
                                       onPressed: () =>
@@ -214,6 +215,7 @@ class MyOrdersScreen extends StatelessWidget {
                                     onPressed: () => _showDeleteDialog(
                                         context, order['order_id']),
                                   ),
+                                  */
                                 ],
                               ),
                             ),
@@ -259,6 +261,7 @@ class MyOrdersScreen extends StatelessWidget {
     }
   }
 
+  /*
   void _showCancelDialog(BuildContext context, Map<String, dynamic> order) {
     showDialog(
       context: context,
@@ -396,6 +399,7 @@ class MyOrdersScreen extends StatelessWidget {
       );
     }
   }
+  */
 }
 
 Widget _buildTransactionDetails(Map<String, dynamic> order) {

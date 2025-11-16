@@ -33,7 +33,6 @@ class _CommentSectionState extends State<CommentSection> {
         final imageFile = File(pickedFile.path);
         final size = await imageFile.length();
 
-        // 5MB এর বেশি ছবি আপলোড করা যাবে না
         if (size > 5 * 1024 * 1024) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -59,19 +58,16 @@ class _CommentSectionState extends State<CommentSection> {
     }
   }
 
-  // Supabase Storage এ ইমেজ আপলোড করার ফাংশন
   Future<String?> _uploadImageToSupabaseStorage(File image) async {
     setState(() {
       _isUploading = true;
     });
 
     try {
-      // Get temporary directory for compressed image
       final Directory tempDir = await getTemporaryDirectory();
       final String targetPath =
           '${tempDir.path}/compressed_${DateTime.now().millisecondsSinceEpoch}.jpg';
 
-      // Compress the image
       XFile? compressedXFile = await FlutterImageCompress.compressAndGetFile(
         image.absolute.path,
         targetPath,
@@ -88,11 +84,8 @@ class _CommentSectionState extends State<CommentSection> {
       }
       File compressedImage = File(compressedXFile.path);
 
-      // Define the storage path
       final String fileName =
           'comment_images/${DateTime.now().millisecondsSinceEpoch}_${image.path.split('/').last}';
-
-      // Upload the compressed file to Supabase Storage
       final String fileExtension = image.path.split('.').last;
       final String path = '$fileName.$fileExtension';
 
@@ -105,7 +98,6 @@ class _CommentSectionState extends State<CommentSection> {
             ),
           );
 
-      // Get the public URL
       final String downloadUrl =
           _supabase.storage.from('comment_images').getPublicUrl(path);
       print('Supabase Storage আপলোড সফল: $downloadUrl');
@@ -166,7 +158,6 @@ class _CommentSectionState extends State<CommentSection> {
     String fetchedUserName = 'Anonymous';
     String fetchedUserEmail = user.email ?? 'N/A';
 
-    // Fetch user name from Supabase 'users' table
     try {
       final response = await _supabase
           .from('users')
@@ -188,14 +179,15 @@ class _CommentSectionState extends State<CommentSection> {
 
     try {
       await _supabase.from('product_comments').insert({
-        'productId': widget.productId,
-        'userId': user.id,
-        'userName': fetchedUserName,
-        'userEmail': fetchedUserEmail,
+        // ডাটাবেস কলামের নাম snake_case এ হবে
+        'product_id': widget.productId,
+        'user_id': user.id,
+        'user_name': fetchedUserName,
+        'user_email': fetchedUserEmail,
         'comment': _commentController.text.trim(),
-        'imageUrls': imageUrls,
-        'timestamp': DateTime.now().toIso8601String(),
-        'status': 'pending', // Default status for moderation
+        'image_urls': imageUrls,
+        'created_at': DateTime.now().toIso8601String(),
+        'status': 'pending',
       });
 
       _commentController.clear();
@@ -305,9 +297,10 @@ class _CommentSectionState extends State<CommentSection> {
       stream: _supabase
           .from('product_comments')
           .select()
-          .eq('productId', widget.productId)
-          .eq('status', 'approved') // Only show approved comments
-          .order('timestamp', ascending: false)
+          // ডাটাবেস কলামের নাম snake_case এ হবে
+          .eq('product_id', widget.productId)
+          .eq('status', 'approved')
+          .order('created_at', ascending: false)
           .asStream(),
       builder: (context, snapshot) {
         if (snapshot.hasError) {
@@ -328,10 +321,12 @@ class _CommentSectionState extends State<CommentSection> {
           itemCount: snapshot.data!.length,
           itemBuilder: (context, index) {
             final commentData = snapshot.data![index];
-            final userName = commentData['userName'] ?? 'Anonymous';
+            // ডাটাবেস থেকে আসা ডেটার কী snake_case এ
+            final userName = commentData['user_name'] ?? 'Anonymous';
             final commentText = commentData['comment'] ?? '';
-            final commentImageUrls = commentData['imageUrls'] as List<dynamic>?;
-            final timestamp = commentData['timestamp'] as String?;
+            final commentImageUrls =
+                commentData['image_urls'] as List<dynamic>?;
+            final timestamp = commentData['created_at'] as String?;
 
             return CommentItemWidget(
               commentData: commentData,
@@ -344,24 +339,6 @@ class _CommentSectionState extends State<CommentSection> {
         );
       },
     );
-  }
-
-  String _formatTimestamp(String timestamp) {
-    final dateTime = DateTime.parse(timestamp);
-    final now = DateTime.now();
-    final difference = now.difference(dateTime);
-
-    if (difference.inSeconds < 60) {
-      return '${difference.inSeconds} সেকেন্ড আগে';
-    } else if (difference.inMinutes < 60) {
-      return '${difference.inMinutes} মিনিট আগে';
-    } else if (difference.inHours < 24) {
-      return '${difference.inHours} ঘন্টা আগে';
-    } else if (difference.inDays < 7) {
-      return '${difference.inDays} দিন আগে';
-    } else {
-      return '${dateTime.day}/${dateTime.month}/${dateTime.year}';
-    }
   }
 
   @override
