@@ -1,28 +1,30 @@
 // ignore_for_file: unused_import
 
 import 'package:amar_uddokta/Quran/my_app.dart' as quran_app;
-import 'package:amar_uddokta/uddoktaa/controllers/cart_controller.dart';
-import 'package:amar_uddokta/uddoktaa/controllers/ProductController.dart';
-import 'package:amar_uddokta/uddoktaa/controllers/favorite_controller.dart';
+import 'package:amar_uddokta/myuddokta/controllers/cart_controller.dart';
+import 'package:amar_uddokta/myuddokta/controllers/ProductController.dart';
+import 'package:amar_uddokta/myuddokta/controllers/favorite_controller.dart';
 
-import 'package:amar_uddokta/uddoktaa/services/user_prefs.dart';
+import 'package:amar_uddokta/myuddokta/services/user_prefs.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
-import 'package:amar_uddokta/uddoktaa/screens/splash_screen.dart';
-import 'package:amar_uddokta/uddoktaa/screens/registration_screen.dart';
-import 'package:amar_uddokta/uddoktaa/screens/home_screen.dart' as home;
-import 'package:amar_uddokta/uddoktaa/screens/profile_screen.dart'
+import 'package:amar_uddokta/myuddokta/screens/splash_screen.dart';
+import 'package:amar_uddokta/myuddokta/screens/registration_screen.dart';
+import 'package:amar_uddokta/myuddokta/screens/home_screen.dart' as home;
+import 'package:amar_uddokta/myuddokta/screens/profile_screen.dart'
     as app_profile;
-import 'package:amar_uddokta/uddoktaa/screens/cart_screen.dart';
-import 'package:amar_uddokta/uddoktaa/screens/favorite_screen.dart';
+import 'package:amar_uddokta/myuddokta/screens/cart_screen.dart';
+import 'package:amar_uddokta/myuddokta/screens/favorite_screen.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:amar_uddokta/madmin/screens/admin_delivery_fee_screen.dart';
+import 'package:amar_uddokta/myuddokta/screens/admin_delivery_fee_screen.dart';
+// import 'package:qcf_quran/qcf_quran.dart';
 import 'package:responsive_framework/responsive_framework.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // await QcfQuran.instance.init();
   await Supabase.initialize(
     url:
         'https://sqemidvbhptlmakfcnzk.supabase.co', // Replace with your Supabase URL
@@ -63,7 +65,7 @@ class MyApp extends StatelessWidget {
           fontFamily: 'NotoSansBengali',
           textTheme: GoogleFonts.notoSansBengaliTextTheme(),
         ),
-        initialRoute: '/', // Splash screen থেকে শুরু
+        initialRoute: '/', // মূল অ্যাপের হোম স্ক্রিন থেকে শুরু
         getPages: [
           GetPage(name: '/', page: () => SplashScreen()),
           GetPage(name: '/register', page: () => RegistrationScreen()),

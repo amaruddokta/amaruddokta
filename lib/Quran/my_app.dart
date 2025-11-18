@@ -2,7 +2,7 @@ import 'dart:io';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'quran_home_page.dart';
+import 'my_home_page.dart';
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -19,8 +19,8 @@ class MyApp extends StatelessWidget {
             textScaler: TextScaler.linear(1),
           ),
           child: Platform.isIOS
-              ? CupertinoApp(title: 'Quran', home: const QuranHomePage())
-              : MaterialApp(title: 'Quran', home: const QuranHomePage()),
+              ? CupertinoApp(title: 'Quran qcf Demo', home: const MyHomePage())
+              : MaterialApp(title: 'Quran qcf Demo', home: const MyHomePage()),
         );
       },
     );

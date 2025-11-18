@@ -1,22 +1,22 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.amar_uddokta.app"> <!-- ← এখানে আপনার অ্যাপের প্যাকেজ নাম -->
+    package="com.amar_uddokta.app"> 
 
-    <!-- পারমিশন -->
+   
     
     <uses-permission android:name="android.permission.INTERNET"/>
-    <uses-permission android:name="android.permission.CALL_PHONE"/>
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
-    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
-   <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
-<uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+
+
+
 
 
 
     <application
-        android:label="Amar Uddokta"
+        android:label="Amar Uddokta" 
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher"
+        android:icon="@mipmap/ic_launcher" 
         android:requestLegacyExternalStorage="true">
         <meta-data android:name="com.google.android.gms.version" android:value="@integer/google_play_services_version" />
 
@@ -41,9 +41,8 @@
             </intent-filter>
         </activity>
 
-        <!-- Flutter Plugin Meta -->
         <meta-data android:name="com.google.android.geo.API_KEY"
-           android:value="AIzaSyCrjBVTGqAbFVVjHQnEo_uIBIi0gWtLtvE"/>
+           android:value="${MAPS_API_KEY}"/>
         
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_channel_id"
@@ -54,7 +53,7 @@
             android:value="2" />
     </application>
 
-    <!-- যেসব অ্যাপ টেক্সট প্রসেস বা কল করতে পারে তাদের খুঁজতে -->
+ 
     <queries>
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
@@ -68,6 +67,5 @@
             <action android:name="android.intent.action.VIEW" />
             <data android:scheme="https" />
         </intent>
-      
     </queries>
 </manifest>

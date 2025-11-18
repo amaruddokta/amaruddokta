@@ -18,7 +18,7 @@ val localProperties = Properties()
 try {
     localProperties.load(FileInputStream(rootProject.file("local.properties")))
 } catch (e: java.io.FileNotFoundException) {
-    // local.properties not found, which is fine
+    
 }
 
 android {
@@ -29,10 +29,13 @@ android {
     defaultConfig {
         applicationId = "com.amar_uddokta.app"
         minSdk = flutter.minSdkVersion
-        targetSdk = 36 // Aligned with compileSdk
+        targetSdk = 36
         versionCode = (localProperties.getProperty("flutter.versionCode") ?: "1").toInt()
         versionName = localProperties.getProperty("flutter.versionName") ?: "1.0"
         multiDexEnabled = true
+
+        
+        manifestPlaceholders["MAPS_API_KEY"] = localProperties.getProperty("MAPS_API_KEY", "")
     }
 
     compileOptions {
@@ -79,6 +82,6 @@ flutter {
 dependencies {
     implementation(platform("com.google.firebase:firebase-bom:33.14.0"))
     implementation("com.google.firebase:firebase-analytics")
-    implementation("org.jetbrains.kotlin:kotlin-stdlib:1.9.0") // Updated Kotlin stdlib
+    implementation("org.jetbrains.kotlin:kotlin-stdlib:1.9.0") 
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 }
